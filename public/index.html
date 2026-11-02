@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LeadFlow — AI enquiry workflow for small businesses</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f5f2;--panel:#fff;--panel2:#f7f8f6;--line:#e3e5df;--ink:#17201c;--mute:#66706a;--brand:#0b7a5c;--brand2:#e3f3ed;
+--hot:#c2410c;--hotbg:#fff1e8;--warm:#a16207;--warmbg:#fdf6dd;--cold:#2563eb;--coldbg:#e9f0ff;--ok:#15803d;--okbg:#e7f6ec;--bad:#b91c1c;--badbg:#fdecec;
+--llm:#2563eb;--llmbg:#e9f0ff;--human:#7c3aed;--humanbg:#f1eafe;--tool:#0b7a5c;--toolbg:#e3f3ed;--sim:#6b7280;--simbg:#eef0f2}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 Inter,system-ui,sans-serif}
+header{display:flex;gap:16px;justify-content:space-between;align-items:center;padding:12px 24px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap;position:sticky;top:0;z-index:5}
+.logo{font-weight:700;font-size:19px;letter-spacing:-.02em;display:flex;align-items:center;gap:8px}.logo i{width:22px;height:22px;border-radius:7px;background:var(--brand);display:inline-grid;place-items:center;color:#fff;font-style:normal;font-size:13px}
+.sub{color:var(--mute);font-size:12.5px;margin-left:4px;font-weight:400}
+.hright{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+select,input,textarea{background:var(--panel);border:1px solid var(--line);border-radius:8px;color:var(--ink);padding:7px 10px;font:inherit}
+textarea{width:100%;resize:vertical;font-size:13.5px;line-height:1.55}input{width:100%}
+.pill{font-size:11.5px;padding:3px 9px;border-radius:99px;font-weight:600;background:var(--simbg);color:var(--sim);white-space:nowrap}
+.pill.on{background:var(--toolbg);color:var(--tool)}.pill.llm{background:var(--llmbg);color:var(--llm)}
+main{display:grid;grid-template-columns:360px 1fr;gap:18px;padding:18px 24px;max-width:1400px;margin:auto}
+@media(max-width:960px){main{grid-template-columns:1fr;padding:12px}header{position:static}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+h2{font-size:14px;margin:0 0 10px;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:8px}
+h3{font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 6px;font-weight:600}
+.btn{background:var(--brand);color:#fff;border:0;border-radius:8px;padding:8px 14px;font:inherit;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn.ghost{background:var(--panel);color:var(--ink);border:1px solid var(--line)}.btn.danger{background:var(--panel);color:var(--bad);border:1px solid #f3c9c9}
+.btn.sm{padding:5px 10px;font-size:12.5px}.btn:disabled{opacity:.5;cursor:wait}.btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}@media(max-width:1100px){.stats{grid-template-columns:repeat(3,1fr)}}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px}.stat b{display:block;font-size:22px;letter-spacing:-.02em}.stat span{color:var(--mute);font-size:12px}
+.inbox{list-style:none;margin:0;padding:0}.inbox li{padding:10px 10px;border-radius:10px;cursor:pointer;border:1px solid transparent;margin-bottom:4px}
+.inbox li:hover{background:var(--panel2)}.inbox li.sel{background:var(--brand2);border-color:#bfe3d4}
+.row1{display:flex;justify-content:space-between;gap:8px;align-items:center}.who{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.subj{color:var(--mute);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.chip{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;text-transform:uppercase;letter-spacing:.03em}
+.c-new{background:var(--simbg);color:var(--sim)}.c-review{background:var(--humanbg);color:var(--human)}.c-done{background:var(--okbg);color:var(--ok)}
+.c-spam,.c-rejected{background:var(--badbg);color:var(--bad)}.c-hot{background:var(--hotbg);color:var(--hot)}.c-warm{background:var(--warmbg);color:var(--warm)}.c-cold{background:var(--coldbg);color:var(--cold)}
+.c-cat{background:var(--panel2);color:var(--ink);border:1px solid var(--line)}
+.chan{font-size:11px;color:var(--mute);margin-right:6px}
+.msg{white-space:pre-wrap;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13.5px}
+.meta{color:var(--mute);font-size:12.5px;margin-bottom:8px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:1100px){.grid2,.grid3{grid-template-columns:1fr}}
+.score{display:flex;align-items:center;gap:14px}.ring{width:74px;height:74px;border-radius:50%;display:grid;place-items:center;flex:none}
+.ring div{width:58px;height:58px;border-radius:50%;background:var(--panel);display:grid;place-items:center;font-weight:700;font-size:20px}
+.reasons{margin:0;padding-left:0;list-style:none;font-size:13px}.reasons li{padding:2px 0;color:var(--mute)}.reasons li b{color:var(--ink);font-weight:600;display:inline-block;min-width:34px}
+.fields{display:grid;grid-template-columns:110px 1fr;gap:4px 10px;font-size:13px}.fields dt{color:var(--mute)}.fields dd{margin:0;overflow-wrap:anywhere}
+.review{border:1.5px solid var(--human);background:linear-gradient(180deg,var(--humanbg),var(--panel) 90px)}.review h2{color:var(--human)}
+.check{font-size:12.5px;padding:6px 10px;border-radius:8px;margin:8px 0}.check.ok{background:var(--okbg);color:var(--ok)}.check.bad{background:var(--badbg);color:var(--bad)}
+.act{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel2);font-size:13px}
+.act h4{margin:0 0 6px;font-size:13px;display:flex;justify-content:space-between;gap:6px;align-items:center}
+.act pre{white-space:pre-wrap;margin:0;font:12.5px/1.5 Inter,sans-serif;max-height:220px;overflow:auto}
+.kv{width:100%;border-collapse:collapse;font-size:12px}.kv td{padding:2px 4px;border-bottom:1px solid var(--line);vertical-align:top}.kv td:first-child{color:var(--mute);width:42%}
+.m-simulated{background:var(--simbg);color:var(--sim)}.m-live,.m-tool{background:var(--toolbg);color:var(--tool)}.m-manual{background:var(--warmbg);color:var(--warm)}.m-error{background:var(--badbg);color:var(--bad)}
+.trace{list-style:none;margin:0;padding:0}.trace li{display:flex;gap:10px;padding:5px 0;position:relative}
+.trace li:before{content:"";position:absolute;left:10px;top:28px;bottom:-5px;width:2px;background:var(--line)}.trace li:last-child:before{display:none}
+.dot{width:22px;height:22px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:10px;font-weight:700;background:var(--simbg);color:var(--sim);z-index:1}
+.dot.llm{background:var(--llmbg);color:var(--llm)}.dot.human{background:var(--humanbg);color:var(--human)}.dot.tool{background:var(--toolbg);color:var(--tool)}.dot.manual{background:var(--warmbg);color:var(--warm)}.dot.pause{background:var(--humanbg);color:var(--human);outline:2px dashed var(--human)}
+.tn{font-family:"JetBrains Mono",monospace;font-size:12px}.td{color:var(--mute);font-size:13px}
+.tag{font-size:10px;padding:1px 7px;border-radius:99px;margin-left:6px;font-weight:700}
+.tag.rules{background:var(--simbg);color:var(--sim)}.tag.llm{background:var(--llmbg);color:var(--llm)}.tag.human{background:var(--humanbg);color:var(--human)}.tag.tool{background:var(--toolbg);color:var(--tool)}.tag.simulated{background:var(--simbg);color:var(--sim)}.tag.manual{background:var(--warmbg);color:var(--warm)}
+.empty{color:var(--mute);text-align:center;padding:70px 20px}
+.banner{border-radius:10px;padding:10px 14px;font-weight:600;margin-bottom:14px}.banner.done{background:var(--okbg);color:var(--ok)}.banner.spam{background:var(--badbg);color:var(--bad)}
+details summary{cursor:pointer;color:var(--mute);font-size:13px}.mermaid{background:#fff;border-radius:10px;padding:10px;overflow:auto}
+pre.kb{white-space:pre-wrap;font-size:12.5px;background:var(--panel2);padding:10px;border-radius:8px;margin:8px 0 0}
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:s .7s linear infinite;vertical-align:-2px;margin-right:6px}@keyframes s{to{transform:rotate(360deg)}}
+.modal{position:fixed;inset:0;background:rgba(10,20,15,.35);display:none;place-items:center;z-index:20;padding:16px}.modal.open{display:grid}
+.modal .card{width:min(560px,100%);margin:0}.modal label{display:block;color:var(--mute);font-size:12px;margin:10px 0 4px}
+.err{background:var(--badbg);color:var(--bad);padding:8px 12px;border-radius:8px;margin:8px 0;font-size:13px}
+footer{color:var(--mute);font-size:12px;text-align:center;padding:4px 0 26px}footer a{color:var(--brand)}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><i>↯</i>LeadFlow<span class="sub">AI workflow that triages enquiries, scores leads and drafts replies — a human approves before anything is sent</span></div>
+  <div class="hright">
+    <select id="biz" title="Business"></select>
+    <span id="mode" class="pill">checking…</span>
+    <span id="int" class="hright"></span>
+  </div>
+</header>
+<main>
+  <section>
+    <div class="card">
+      <h2>Inbox <span class="btns"><button class="btn sm ghost" id="newBtn">+ New</button><button class="btn sm" id="allBtn">Process all</button></span></h2>
+      <ul class="inbox" id="inbox"></ul>
+      <div class="btns" style="margin-top:8px"><button class="btn sm ghost" id="resetBtn">Reset inbox</button></div>
+    </div>
+    <div class="card">
+      <details><summary>Knowledge base the AI may quote from</summary><pre class="kb" id="kb"></pre></details>
+    </div>
+    <div class="card">
+      <details><summary>Workflow graph (LangGraph, generated from the code)</summary><pre class="mermaid" id="graph"></pre></details>
+    </div>
+  </section>
+  <section>
+    <div class="stats" id="stats"></div>
+    <div id="detail"><div class="card empty">Pick an enquiry from the inbox, or press <b>Process all</b> to triage the whole inbox.</div></div>
+  </section>
+</main>
+<footer>Portfolio project by Niket Korgaonkar · LangGraph + LangChain + FastAPI · <a href="https://github.com/NiKeT972/leadflow" target="_blank" rel="noopener">source on GitHub</a> · demo businesses and customers are fictional</footer>
+
+<div class="modal" id="modal"><div class="card">
+  <h2>New enquiry <button class="btn sm ghost" id="closeModal">✕</button></h2>
+  <div class="grid2">
+    <div><label>Channel</label><select id="fChan" style="width:100%"><option>email</option><option>web form</option><option>whatsapp</option></select></div>
+    <div><label>Name</label><input id="fName" maxlength="100" placeholder="Customer name"></div>
+  </div>
+  <label>Email (optional)</label><input id="fEmail" maxlength="200" placeholder="name@example.com">
+  <label>Subject</label><input id="fSubj" maxlength="200">
+  <label>Message</label><textarea id="fBody" rows="7" maxlength="4000" placeholder="Paste or type the customer's message (English or Hinglish)…"></textarea>
+  <div id="fErr"></div>
+  <div class="btns" style="margin-top:12px"><button class="btn" id="addBtn">Add &amp; process</button></div>
+</div></div>
+
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+window._mermaid = mermaid; mermaid.initialize({startOnLoad:false, theme:"neutral"}); if (window._graphSrc) window.renderGraph();
+</script>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const inr = n => "₹" + Number(n || 0).toLocaleString("en-IN");
+let META = null, BIZ = "ca", LEADS = {}, SEL = null, BUSY = new Set();
+
+// Leads live in this browser only (localStorage), so each visitor gets their own inbox. Storage can be unavailable.
+const KEY = () => "leadflow:" + BIZ;
+function save(){ try { localStorage.setItem(KEY(), JSON.stringify(LEADS)); localStorage.setItem("leadflow:biz", BIZ) } catch(e){} }
+function load(){
+  try { LEADS = JSON.parse(localStorage.getItem(KEY()) || "null") } catch(e){ LEADS = null }
+  if (!LEADS) { LEADS = {}; (META.samples[BIZ] || []).forEach(e => LEADS[e.id] = {id:e.id, enquiry:e}) }
+}
+
+async function api(path, body){
+  const r = await fetch(path, body ? {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)} : {});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(typeof j.detail === "string" ? j.detail : (j.detail?.[0]?.msg || "Request failed (" + r.status + ")"));
+  return j;
+}
+
+function statusOf(l){
+  if (BUSY.has(l.id)) return "working";
+  return l.result?.state?.status || "new";
+}
+function chipFor(l){
+  const s = statusOf(l), st = l.result?.state;
+  if (s === "working") return `<span class="chip c-new"><span class="spinner"></span>running</span>`;
+  if (s === "new") return `<span class="chip c-new">new</span>`;
+  if (s === "spam") return `<span class="chip c-spam">spam</span>`;
+  if (s === "rejected") return `<span class="chip c-rejected">archived</span>`;
+  const pr = st.lead_score?.priority, cat = st.classification?.category;
+  const tag = pr && pr !== "n/a" ? `<span class="chip c-${pr}">${pr}</span>` : `<span class="chip c-cat">${esc(cat.replace("_"," "))}</span>`;
+  return tag + " " + (s === "awaiting_review" ? `<span class="chip c-review">review</span>` : `<span class="chip c-done">sent</span>`);
+}
+
+function renderInbox(){
+  const order = Object.values(LEADS);
+  $("inbox").innerHTML = order.map(l => `<li data-id="${esc(l.id)}" class="${l.id === SEL ? "sel" : ""}">
+    <div class="row1"><span class="who"><span class="chan">${{email:"✉️","web form":"🌐",whatsapp:"💬"}[l.enquiry.channel] || "✉️"}</span>${esc(l.enquiry.from_name || "Unknown")}</span><span>${chipFor(l)}</span></div>
+    <div class="subj">${esc(l.enquiry.subject || l.enquiry.body.slice(0, 60))}</div></li>`).join("");
+  $("inbox").querySelectorAll("li").forEach(li => li.onclick = () => { SEL = li.dataset.id; renderAll(); if (innerWidth < 960) $("detail").scrollIntoView({behavior:"smooth"}) });
+  renderStats();
+}
+
+function renderStats(){
+  const done = Object.values(LEADS).filter(l => l.result);
+  const sales = done.filter(l => l.result.state.classification?.category === "sales");
+  const hot = sales.filter(l => l.result.state.lead_score?.priority === "hot").length;
+  const review = done.filter(l => l.result.state.status === "awaiting_review").length;
+  const spam = done.filter(l => l.result.state.status === "spam").length;
+  const value = sales.reduce((a, l) => a + (l.result.state.lead_score?.est_value || 0), 0);
+  $("stats").innerHTML = [[done.length + "/" + Object.keys(LEADS).length, "processed"], [hot, "hot leads"], [review, "awaiting your approval"],
+    [spam, "spam filtered"], [inr(value), "est. pipeline value"]].map(([b, s]) => `<div class="stat"><b>${b}</b><span>${s}</span></div>`).join("");
+}
+
+const DOT = {ingest:"IN",classify:"CL",extract:"EX",score:"SC",draft_reply:"DR",check_reply:"CK",human_review:"HU",log_to_sheet:"GS",notify_team:"TG",send_reply:"EM",finalize:"✓",archive:"AR"};
+function traceHtml(st, paused){
+  const items = (st.trace || []).map(t => `<li><span class="dot ${t.mode}">${DOT[t.node] || "•"}</span><div><span class="tn">${t.node}</span><span class="tag ${t.mode}">${t.mode}</span><div class="td">${esc(t.detail)}</div></div></li>`);
+  if (paused) items.push(`<li><span class="dot pause">⏸</span><div><span class="tn">human_review</span><span class="tag human">waiting</span><div class="td">Graph paused. Nothing has been sent; approve, revise or reject below.</div></div></li>`);
+  return `<ul class="trace">${items.join("")}</ul>`;
+}
+
+function ring(score, pr){
+  const col = {hot:"var(--hot)", warm:"var(--warm)", cold:"var(--cold)"}[pr] || "var(--sim)";
+  return `<div class="ring" style="background:conic-gradient(${col} ${score * 3.6}deg, var(--line) 0)"><div style="color:${col}">${score}</div></div>`;
+}
+
+function actionHtml(a){
+  const mode = a.ok === false ? "error" : a.mode;
+  const title = {log_to_sheet:"Google Sheets", notify_team:"Telegram alert", send_reply:"Reply email"}[a.name];
+  let body = "";
+  if (a.name === "log_to_sheet") body = `<table class="kv">${Object.entries(a.payload).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join("")}</table>`;
+  else if (a.name === "notify_team") body = `<pre>${esc(a.payload.text)}</pre>`;
+  else body = `<div class="meta">To: ${esc(a.payload.to || "—")}<br>Subject: ${esc(a.payload.subject)}</div><pre>${esc(a.payload.text)}</pre>`;
+  return `<div class="act"><h4>${title}<span class="chip m-${mode}">${mode}</span></h4><div class="meta">${esc(a.detail)}</div>${body}</div>`;
+}
+
+function renderDetail(){
+  const l = LEADS[SEL];
+  if (!l) { $("detail").innerHTML = `<div class="card empty">Pick an enquiry from the inbox, or press <b>Process all</b> to triage the whole inbox.</div>`; return }
+  const e = l.enquiry, r = l.result, st = r?.state, busy = BUSY.has(l.id);
+  let h = `<div class="card"><h2>${esc(e.subject || "(no subject)")} <span>${r ? chipFor(l) : ""}</span></h2>
+    <div class="meta">${esc(e.channel)} · from <b>${esc(e.from_name || "unknown")}</b>${e.from_email ? " &lt;" + esc(e.from_email) + "&gt;" : ""}</div>
+    <div class="msg">${esc(e.body)}</div>
+    ${!r ? `<div class="btns" style="margin-top:12px"><button class="btn" id="runBtn" ${busy ? "disabled" : ""}>${busy ? '<span class="spinner"></span>Running workflow…' : "Run workflow"}</button>
+      <select id="tone"><option value="friendly">friendly tone</option><option value="formal">formal tone</option></select></div>` : ""}
+    ${l.error ? `<div class="err">${esc(l.error)}</div>` : ""}</div>`;
+  if (st) {
+    if (st.status === "spam") h += `<div class="banner spam">Filtered as spam. No reply drafted, nobody alerted, no human time spent.</div>`;
+    if (st.status === "done" || st.status === "done_with_errors") h += `<div class="banner done">Approved and processed: ${(st.actions || []).map(a => a.detail).join(" · ")}</div>`;
+    if (st.status === "rejected") h += `<div class="banner spam">Archived without a reply.</div>`;
+    if (st.fields) {
+      const c = st.classification, f = st.fields, sc = st.lead_score;
+      h += `<div class="grid2"><div class="card"><h2>Lead</h2>
+        ${sc.priority !== "n/a" ? `<div class="score">${ring(sc.score, sc.priority)}<div><span class="chip c-${sc.priority}">${sc.priority} lead</span><div class="meta" style="margin:6px 0 0">${sc.est_value ? "est. value " + inr(sc.est_value) : ""}</div></div></div>
+          <h3>Why this score</h3><ul class="reasons">${sc.reasons.map(x => { const [p, ...rest] = x.split(" "); return `<li><b>${esc(p)}</b>${esc(rest.join(" "))}</li>` }).join("")}</ul>`
+          : `<span class="chip c-cat">${esc(c.category.replace("_", " "))}</span><div class="meta" style="margin-top:8px">Not a sales lead, so it isn't scored. It still gets a reply and goes to the right person.</div>`}
+        </div><div class="card"><h2>Extracted details</h2><dl class="fields">
+          <dt>Category</dt><dd>${esc(c.category.replace("_", " "))} · ${Math.round(c.confidence * 100)}%</dd>
+          <dt>Language</dt><dd>${esc(c.language)}</dd><dt>Name</dt><dd>${esc(f.name)}</dd>
+          <dt>Phone</dt><dd>${esc(f.phone || "—")}</dd><dt>Email</dt><dd>${esc(f.email || "—")}</dd>
+          <dt>Services</dt><dd>${esc((f.services || []).join(", ") || "—")}</dd><dt>Budget</dt><dd>${f.budget_inr ? inr(f.budget_inr) : "not stated"}</dd>
+          <dt>Timeline</dt><dd>${esc(f.timeline)}</dd><dt>Need</dt><dd>${esc(f.need)}</dd></dl></div></div>`;
+    }
+    if (st.status === "awaiting_review") {
+      const ck = st.check || {ok:true, issues:[]};
+      h += `<div class="card review"><h2>Your approval <span class="chip c-review">graph paused</span></h2>
+        <div class="meta">Edit the reply if you like. Approving logs the lead, alerts the team and sends this reply, all in parallel.</div>
+        <textarea id="reply" rows="12">${esc(st.draft)}</textarea>
+        <div class="check ${ck.ok ? "ok" : "bad"}">${ck.ok ? "✓ Reply check passed: every price and number comes from your knowledge base or the customer's message, no over-promising." : "⚠ Reply check: " + esc(ck.issues.join("; ")) + ". Fix it before approving."}</div>
+        <div class="btns"><button class="btn" id="approveBtn" ${busy ? "disabled" : ""}>${busy ? '<span class="spinner"></span>Working…' : "Approve &amp; send"}</button>
+          <input id="feedback" placeholder="…or tell the AI what to change (e.g. 'make it formal', 'shorter')" style="flex:1;min-width:200px" maxlength="500">
+          <button class="btn ghost" id="reviseBtn" ${busy ? "disabled" : ""}>Revise</button><button class="btn danger" id="rejectBtn" ${busy ? "disabled" : ""}>Reject</button></div></div>`;
+    }
+    if (st.actions?.length) h += `<div class="card"><h2>What happened</h2><div class="grid3">${["log_to_sheet", "notify_team", "send_reply"].map(n => st.actions.find(a => a.name === n)).filter(Boolean).map(actionHtml).join("")}</div>
+      ${st.actions.some(a => a.mode === "simulated") ? `<div class="meta" style="margin:10px 0 0">“simulated” = the integration isn't connected on this demo, so it shows exactly what would be sent. Add the keys in the environment to make it live.</div>` : ""}</div>`;
+    h += `<div class="card"><h2>Workflow trace</h2>${traceHtml(st, st.status === "awaiting_review")}</div>`;
+  }
+  $("detail").innerHTML = h;
+  if ($("runBtn")) $("runBtn").onclick = () => runLead(l.id, $("tone").value);
+  if ($("approveBtn")) {
+    $("approveBtn").onclick = () => resumeLead(l.id, "approve", {edited_reply: $("reply").value.trim() === st.draft.trim() ? "" : $("reply").value});
+    $("reviseBtn").onclick = () => { const fb = $("feedback").value.trim(); if (!fb) { $("feedback").focus(); $("feedback").placeholder = "Type what to change first"; return } resumeLead(l.id, "revise", {feedback: fb}) };
+    $("rejectBtn").onclick = () => resumeLead(l.id, "reject");
+  }
+}
+
+function renderAll(){ renderInbox(); renderDetail() }
+
+async function runLead(id, tone = "friendly"){
+  const l = LEADS[id]; if (BUSY.has(id)) return;
+  BUSY.add(id); delete l.error; renderAll();
+  try {
+    const {channel, from_name, from_email, subject, body} = l.enquiry;
+    l.result = await api("/api/run", {enquiry:{channel, from_name, from_email, subject, body}, profile_id:BIZ, tone});
+  } catch(err) { l.error = err.message }
+  BUSY.delete(id); save(); renderAll();
+}
+
+async function resumeLead(id, decision, extra = {}){
+  const l = LEADS[id]; if (BUSY.has(id)) return;
+  BUSY.add(id); delete l.error; renderAll();
+  try { l.result = await api("/api/resume", {token:l.result.token, decision, ...extra}) } catch(err) { l.error = err.message }
+  BUSY.delete(id); save(); renderAll();
+}
+
+$("allBtn").onclick = async () => {
+  $("allBtn").disabled = true;
+  for (const l of Object.values(LEADS)) if (!l.result) await runLead(l.id);
+  $("allBtn").disabled = false;
+  const first = Object.values(LEADS).find(l => l.result?.state?.status === "awaiting_review" && l.result.state.lead_score?.priority === "hot")
+             || Object.values(LEADS).find(l => l.result?.state?.status === "awaiting_review");
+  if (first) { SEL = first.id; renderAll() }
+};
+$("resetBtn").onclick = () => { try { localStorage.removeItem(KEY()) } catch(e){} LEADS = null; load(); SEL = null; renderAll() };
+$("newBtn").onclick = () => { $("modal").classList.add("open"); $("fErr").innerHTML = ""; $("fBody").focus() };
+$("closeModal").onclick = () => $("modal").classList.remove("open");
+$("addBtn").onclick = () => {
+  const body = $("fBody").value.trim();
+  if (body.length < 10) { $("fErr").innerHTML = `<div class="err">Write at least a sentence of the customer's message.</div>`; return }
+  const id = "u" + Date.now();
+  LEADS = {[id]: {id, enquiry:{id, channel:$("fChan").value, from_name:$("fName").value.trim(), from_email:$("fEmail").value.trim(), subject:$("fSubj").value.trim(), body}}, ...LEADS};
+  ["fName", "fEmail", "fSubj", "fBody"].forEach(i => $(i).value = "");
+  $("modal").classList.remove("open"); SEL = id; save(); runLead(id);
+};
+$("biz").onchange = () => { BIZ = $("biz").value; load(); SEL = null; save(); setBiz(); renderAll() };
+
+function setBiz(){ $("kb").textContent = META.profiles[BIZ].kb }
+
+window.renderGraph = function(){ if (window._mermaid && window._graphSrc) { $("graph").textContent = window._graphSrc; window._mermaid.run({nodes:[$("graph")]}).catch(() => {}) } };
+
+(async () => {
+  META = await api("/api/meta");
+  try { BIZ = localStorage.getItem("leadflow:biz") || "ca" } catch(e){}
+  if (!META.profiles[BIZ]) BIZ = "ca";
+  $("biz").innerHTML = Object.values(META.profiles).map(p => `<option value="${p.id}" ${p.id === BIZ ? "selected" : ""}>${esc(p.name)} (${esc(p.kind)})</option>`).join("");
+  load(); setBiz(); renderAll();
+  window._graphSrc = META.graph; window.renderGraph();
+  const h = await api("/api/health");
+  $("mode").className = "pill " + (h.llm ? "llm" : "");
+  $("mode").textContent = h.llm ? "AI: " + h.model : "AI: built-in rules (no API key)";
+  $("int").innerHTML = [["sheets", "Sheets"], ["telegram", "Telegram"], ["email", "Email"]].map(([k, n]) => `<span class="pill ${h.integrations[k] ? "on" : ""}" title="${h.integrations[k] ? "connected" : "simulated – not connected"}">${n} ${h.integrations[k] ? "●" : "○"}</span>`).join("");
+})();
+</script>
+</body>
+</html>
