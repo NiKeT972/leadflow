@@ -2,7 +2,7 @@
 
 LangGraph workflow for small-business enquiries: ingest → classify → (spam → archive) → extract → score → draft_reply → check_reply (retry loop) → human_review [HITL] → log_to_sheet ‖ notify_team ‖ send_reply → finalize. Portfolio project by Niket Korgaonkar. He must be able to explain every line in interviews, so keep the code simple and explain your changes.
 
-Vercel auto-deploys on push to `main`. There is no vercel.json; Vercel detects the FastAPI `app` in `app.py`.
+Live: https://leadflow-ai-two-sooty.vercel.app (Vercel project `leadflow-ai`). Vercel auto-deploys on push to `main`. There is no vercel.json; Vercel detects the FastAPI `app` in `app.py`.
 
 ## Layout
 - `app.py`: `POST /api/run`, `POST /api/resume` (signed token only, never raw state), `GET /api/meta`, `GET /api/health`, and `/` serves `public/index.html`.

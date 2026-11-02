@@ -6,7 +6,7 @@ LeadFlow is a **LangGraph** workflow that reads each incoming enquiry, **classif
 
 ![LeadFlow dashboard](docs/screenshot.png)
 
-**Live demo:** _link added after deploy_ · Built with LangGraph, LangChain, Groq, FastAPI and vanilla JS, deployed on Vercel.
+**Live demo:** https://leadflow-ai-two-sooty.vercel.app · Built with LangGraph, LangChain, Groq, FastAPI and vanilla JS, deployed on Vercel.
 
 ## What it does
 
