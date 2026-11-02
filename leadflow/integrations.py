@@ -6,6 +6,7 @@ exactly what it would have sent, so the public demo never emails a stranger or w
   Google Sheets  GOOGLE_SHEETS_WEBHOOK_URL   Apps Script web app (see scripts/sheets_webhook.gs)
   Telegram       TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID
   Email          RESEND_API_KEY + FROM_EMAIL (Resend's HTTP API)
+  WhatsApp       WHATSAPP_TOKEN + WHATSAPP_PHONE_ID (Meta WhatsApp Cloud API) for enquiries that came in on WhatsApp
 """
 from __future__ import annotations
 
@@ -84,7 +85,26 @@ def notify_team(s: dict) -> dict:
         return {"mode": "live", "ok": False, "detail": f"Telegram error: {type(e).__name__}", "payload": {"text": text}}
 
 
+def send_whatsapp(s: dict) -> dict:
+    """Reply on WhatsApp. Allowed as free text because the customer messaged first (WhatsApp's 24-hour window)."""
+    to = s.get("enquiry", {}).get("reply_to", "")
+    payload = {"to": to, "subject": "WhatsApp reply", "text": s.get("final_reply", "")}
+    token, phone_id = os.getenv("WHATSAPP_TOKEN"), os.getenv("WHATSAPP_PHONE_ID")
+    if not (token and phone_id):
+        return {"mode": "simulated", "ok": True, "detail": f"would send this WhatsApp reply to +{to}", "payload": payload}
+    try:
+        r = httpx.post(f"https://graph.facebook.com/v21.0/{phone_id}/messages",
+                       headers={"Authorization": f"Bearer {token}"}, timeout=TIMEOUT,
+                       json={"messaging_product": "whatsapp", "to": to, "type": "text", "text": {"body": payload["text"]}})
+        r.raise_for_status()
+        return {"mode": "live", "ok": True, "detail": f"WhatsApp reply sent to +{to}", "payload": payload}
+    except Exception as e:
+        return {"mode": "live", "ok": False, "detail": f"WhatsApp error: {type(e).__name__}", "payload": payload}
+
+
 def send_reply(s: dict) -> dict:
+    if s.get("enquiry", {}).get("channel") == "whatsapp" and s.get("enquiry", {}).get("reply_to"):
+        return send_whatsapp(s)
     to = s.get("fields", {}).get("email", "")
     subject = "Re: " + (s.get("enquiry", {}).get("subject") or "your enquiry")
     payload = {"to": to, "subject": subject, "text": s.get("final_reply", "")}
@@ -109,4 +129,21 @@ def status() -> dict:
         "sheets": bool(os.getenv("GOOGLE_SHEETS_WEBHOOK_URL")),
         "telegram": bool(os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("TELEGRAM_CHAT_ID")),
         "email": bool(os.getenv("RESEND_API_KEY") and os.getenv("FROM_EMAIL")),
+        "whatsapp": bool(os.getenv("WHATSAPP_TOKEN") and os.getenv("WHATSAPP_PHONE_ID")),
     }
+
+
+def review_alert(s: dict, lead_id: str = "") -> dict:
+    """Telegram ping when a real enquiry arrives and is waiting for approval (intake), before any reply is sent."""
+    sc, f = s.get("lead_score", {}), s.get("fields", {})
+    text = (f"📥 New {sc.get('priority', '')} {s.get('classification', {}).get('category', '')} enquiry – "
+            f"{s.get('profile_name', '')}\n{f.get('name', '')}: {f.get('need', '')}\nWaiting for your approval in LeadFlow.")
+    token, chat = os.getenv("TELEGRAM_BOT_TOKEN"), os.getenv("TELEGRAM_CHAT_ID")
+    if not (token and chat):
+        return {"mode": "simulated", "ok": True}
+    try:
+        httpx.post(f"https://api.telegram.org/bot{token}/sendMessage", json={"chat_id": chat, "text": text},
+                   timeout=TIMEOUT).raise_for_status()
+        return {"mode": "live", "ok": True}
+    except Exception as e:
+        return {"mode": "live", "ok": False, "detail": type(e).__name__}

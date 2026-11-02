@@ -1,0 +1,124 @@
+{
+  "mode": "built-in rules",
+  "run_at": "2026-11-02 16:39 UTC",
+  "cases": 50,
+  "metrics": {
+    "category_accuracy": 100.0,
+    "spam_precision": 100.0,
+    "spam_recall": 100.0,
+    "service_precision": 83.3,
+    "service_recall": 100.0,
+    "service_f1": 90.9,
+    "budget_accuracy": 100.0,
+    "timeline_accuracy": 93.2,
+    "phone_accuracy": 100.0,
+    "injection_recall": 100.0,
+    "injection_false_alarms": 0,
+    "sales_drafts_passing_check": 100.0,
+    "reply_check_blocks_bad": 75.0,
+    "reply_check_passes_good": 87.5,
+    "avg_ms_per_enquiry": 19
+  },
+  "per_category": {
+    "job_application": {
+      "precision": 100.0,
+      "recall": 100.0,
+      "n": 4
+    },
+    "partnership": {
+      "precision": 100.0,
+      "recall": 100.0,
+      "n": 3
+    },
+    "sales": {
+      "precision": 100.0,
+      "recall": 100.0,
+      "n": 30
+    },
+    "spam": {
+      "precision": 100.0,
+      "recall": 100.0,
+      "n": 6
+    },
+    "support": {
+      "precision": 100.0,
+      "recall": 100.0,
+      "n": 7
+    }
+  },
+  "confusions": {},
+  "misses": [],
+  "service_misses": [
+    {
+      "id": "e02",
+      "expected": [
+        "Bookkeeping and accounting"
+      ],
+      "got": [
+        "Bookkeeping and accounting",
+        "Monthly GST return filing"
+      ]
+    },
+    {
+      "id": "e08",
+      "expected": [],
+      "got": [
+        "Bookkeeping and accounting"
+      ]
+    },
+    {
+      "id": "e14",
+      "expected": [
+        "Bookkeeping and accounting",
+        "Monthly GST return filing"
+      ],
+      "got": [
+        "Monthly GST return filing",
+        "Private limited company registration",
+        "Bookkeeping and accounting"
+      ]
+    },
+    {
+      "id": "e18",
+      "expected": [],
+      "got": [
+        "Bookkeeping and accounting",
+        "Monthly GST return filing"
+      ]
+    },
+    {
+      "id": "e23",
+      "expected": [],
+      "got": [
+        "Consultation and check-up"
+      ]
+    },
+    {
+      "id": "e38",
+      "expected": [
+        "JEE Main + Advanced (2-year programme)"
+      ],
+      "got": [
+        "JEE Main + Advanced (2-year programme)",
+        "Class 10 board coaching (SSC/CBSE)"
+      ]
+    }
+  ],
+  "reply_check_misses": [
+    {
+      "id": "r04",
+      "expected": false,
+      "got": true
+    },
+    {
+      "id": "r07",
+      "expected": false,
+      "got": true
+    },
+    {
+      "id": "r16",
+      "expected": true,
+      "got": false
+    }
+  ]
+}

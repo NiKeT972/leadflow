@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LeadFlow — AI enquiry workflow for small businesses</title>
+<script>try{document.documentElement.dataset.theme=JSON.parse(localStorage.getItem("leadflow:theme"))||"light"}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
@@ -70,36 +71,108 @@ pre.kb{white-space:pre-wrap;font-size:12.5px;background:var(--panel2);padding:10
 .modal .card{width:min(560px,100%);margin:0}.modal label{display:block;color:var(--mute);font-size:12px;margin:10px 0 4px}
 .err{background:var(--badbg);color:var(--bad);padding:8px 12px;border-radius:8px;margin:8px 0;font-size:13px}
 footer{color:var(--mute);font-size:12px;text-align:center;padding:4px 0 26px}footer a{color:var(--human)}
+
+[data-theme=dark]{--bg:#1b1216;--panel:#251a1f;--panel2:#2d2026;--line:#3e2b33;--ink:#fbeef1;--mute:#c6a4ad;--brand2:#3a2420;
+--soft:linear-gradient(135deg,#221519 0%,#24131d 100%);--hotbg:#3b2416;--warmbg:#352c14;--coldbg:#22243f;--okbg:#17301f;--badbg:#3a1826;
+--llmbg:#2a2445;--humanbg:#3a1a2a;--toolbg:#3a2420;--simbg:#33272b}
+[data-theme=dark] header{background:rgba(37,26,31,.85)}[data-theme=dark] .mermaid{background:#fff7f3}
+.tabs{display:flex;gap:4px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:3px}
+.tab{border:0;background:transparent;color:var(--mute);font:inherit;font-weight:600;padding:5px 12px;border-radius:8px;cursor:pointer}
+.tab.on{background:var(--grad);color:#fff}
+.iconbtn{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:5px 9px;cursor:pointer;font:inherit}
+.view{display:none}.view.on{display:grid}#settingsView{grid-template-columns:1fr 1fr}#evalView{grid-template-columns:1fr;max-width:1100px}@media(max-width:960px){#settingsView{grid-template-columns:1fr}}
+.flag{border-radius:10px;padding:9px 12px;margin-bottom:12px;font-size:13px;background:var(--warmbg);color:var(--warm);border:1px solid #f3d99a}
+.flag b{display:block;margin-bottom:2px}
+.sources{display:grid;gap:8px}.src{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--panel2);font-size:12.5px}
+.src b{color:var(--human)}.src .meta{margin:2px 0 4px}
+.times{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.settings label{display:block;color:var(--mute);font-size:12px;margin:10px 0 4px}
+.settings .hint{color:var(--mute);font-size:12px;margin-top:4px}
+.doclist{list-style:none;padding:0;margin:6px 0}.doclist li{display:flex;justify-content:space-between;gap:8px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;font-size:13px;background:var(--panel2)}
+.metrics{width:100%;border-collapse:collapse;font-size:13px}.metrics th,.metrics td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left}
+.metrics th{color:var(--mute);font-weight:600;font-size:12px}.metrics td.num{font-variant-numeric:tabular-nums;font-weight:600}
+.good{color:var(--ok)}.meh{color:var(--warm)}.badv{color:var(--bad)}
+.ok-msg{background:var(--okbg);color:var(--ok);padding:8px 12px;border-radius:8px;margin:8px 0;font-size:13px}
 </style>
 </head>
 <body>
 <header>
-  <div class="logo"><i>↯</i>LeadFlow<span class="sub">AI workflow that triages enquiries, scores leads and drafts replies — a human approves before anything is sent</span></div>
+  <div class="logo"><i>↯</i>LeadFlow<span class="sub">AI workflow that triages enquiries, scores leads and drafts cited replies — a human approves before anything is sent</span></div>
   <div class="hright">
+    <div class="tabs"><button class="tab on" data-view="inboxView">Inbox</button><button class="tab" data-view="settingsView">Settings</button><button class="tab" data-view="evalView">Evaluation</button></div>
     <select id="biz" title="Business"></select>
     <span id="mode" class="pill">checking…</span>
     <span id="int" class="hright"></span>
+    <button class="iconbtn" id="themeBtn" title="Dark / light">🌙</button>
   </div>
 </header>
-<main>
+
+<!-- ============================== INBOX ============================== -->
+<main class="view on" id="inboxView">
   <section>
     <div class="card">
-      <h2>Inbox <span class="btns"><button class="btn sm ghost" id="newBtn">+ New</button><button class="btn sm" id="allBtn">Process all</button></span></h2>
+      <h2><span id="inboxTitle">Inbox</span> <span class="btns"><button class="btn sm ghost" id="newBtn">+ New</button><button class="btn sm" id="allBtn">Process all</button></span></h2>
       <ul class="inbox" id="inbox"></ul>
-      <div class="btns" style="margin-top:8px"><button class="btn sm ghost" id="resetBtn">Reset inbox</button></div>
+      <div class="btns" style="margin-top:8px"><button class="btn sm ghost" id="resetBtn">Reset inbox</button><button class="btn sm ghost" id="refreshBtn" style="display:none">↻ Refresh</button></div>
     </div>
-    <div class="card">
-      <details><summary>Knowledge base the AI may quote from</summary><pre class="kb" id="kb"></pre></details>
-    </div>
-    <div class="card">
-      <details><summary>Workflow graph (LangGraph, generated from the code)</summary><pre class="mermaid" id="graph"></pre></details>
-    </div>
+    <div class="card"><details><summary>Knowledge base &amp; documents the AI may quote from</summary><pre class="kb" id="kb"></pre></details></div>
+    <div class="card"><details><summary>Workflow graph (LangGraph, generated from the code)</summary><pre class="mermaid" id="graph"></pre></details></div>
   </section>
   <section>
     <div class="stats" id="stats"></div>
     <div id="detail"><div class="card empty">Pick an enquiry from the inbox, or press <b>Process all</b> to triage the whole inbox.</div></div>
   </section>
 </main>
+
+<!-- ============================== SETTINGS ============================== -->
+<main class="view settings" id="settingsView">
+  <section>
+    <div class="card">
+      <h2>Your business</h2>
+      <div class="meta">Set up your own business. The AI will only quote the prices and facts you enter here and in your documents.</div>
+      <div class="grid2"><div><label>Business name</label><input id="sName" maxlength="80" placeholder="Glow Studio"></div>
+        <div><label>Type</label><input id="sKind" maxlength="40" placeholder="salon, clinic, CA firm…"></div></div>
+      <div class="grid2"><div><label>Area / city</label><input id="sCity" maxlength="60" placeholder="Bandra West, Mumbai"></div>
+        <div><label>Hours</label><input id="sHours" maxlength="80" placeholder="Tue–Sun, 11 am – 8 pm"></div></div>
+      <div class="grid2"><div><label>Next step you offer</label><input id="sNext" maxlength="100" placeholder="a free consultation"></div>
+        <div><label>Smallest deal worth chasing (₹)</label><input id="sMin" type="number" min="0" placeholder="2000"></div></div>
+      <label>Sign-off</label><input id="sSign" maxlength="160" placeholder="Team Glow Studio, Bandra">
+      <label>Services – one per line: <b>Name | Price as shown to customers | typical value in ₹ | keywords (optional)</b></label>
+      <textarea id="sServices" rows="6" placeholder="Bridal makeup | ₹15,000 – ₹25,000 | 20000 | bridal, wedding makeup&#10;Hair spa | ₹1,800 | 1800 | hair spa, hair treatment"></textarea>
+      <label>FAQs – one per line: <b>Topic | keywords | Answer</b></label>
+      <textarea id="sFaq" rows="4" placeholder="parking | parking, car | There is paid parking right next to the studio."></textarea>
+      <label>Rule the AI must follow (optional)</label><input id="sRule" maxlength="200" placeholder="Never promise results; the stylist decides after a consultation.">
+      <div id="sErr"></div>
+      <div class="btns" style="margin-top:12px"><button class="btn" id="saveBizBtn">Save &amp; use this business</button><button class="btn ghost" id="loadDemoBtn">Fill with an example</button></div>
+    </div>
+  </section>
+  <section>
+    <div class="card">
+      <h2>Documents (RAG)</h2>
+      <div class="meta">Upload your fee sheet, policies or FAQ as PDF, TXT or Markdown. LeadFlow searches them for every enquiry and cites the sections it uses as [1], [2].</div>
+      <ul class="doclist" id="docList"></ul>
+      <div class="btns"><label class="btn sm ghost" style="margin:0">Upload file<input type="file" id="docFile" accept=".pdf,.txt,.md" hidden></label>
+        <button class="btn sm ghost" id="pasteDocBtn">Paste text instead</button></div>
+      <div id="pasteBox" style="display:none"><label>Title</label><input id="pasteName" maxlength="120"><label>Text</label><textarea id="pasteText" rows="6" maxlength="30000"></textarea>
+        <div class="btns" style="margin-top:8px"><button class="btn sm" id="addPasteBtn">Add document</button></div></div>
+      <div id="docErr"></div>
+    </div>
+    <div class="card">
+      <h2>Real intake <span class="chip c-new" id="storagePill">checking…</span></h2>
+      <div class="meta">Connect a real inbox: the Gmail script, a website form or WhatsApp sends enquiries to <code>/api/intake</code>. They're stored in Supabase and wait here for your approval. Setup steps are in the README.</div>
+      <label>Admin token (the ADMIN_TOKEN you set in Vercel, kept only in this browser)</label><input id="adminTok" type="password" maxlength="200" autocomplete="off">
+      <label>Business id for your saved business (letters, numbers, dashes)</label><input id="bizId" maxlength="40" placeholder="glow-studio">
+      <div class="btns" style="margin-top:10px"><button class="btn sm ghost" id="saveAdminBtn">Save &amp; show live inbox</button><button class="btn sm ghost" id="pushBizBtn">Save my business to the server</button></div>
+      <div id="adminMsg"></div>
+    </div>
+  </section>
+</main>
+
+<!-- ============================== EVALUATION ============================== -->
+<main class="view" id="evalView">
+  <section><div class="card" id="evalCard"><h2>Evaluation</h2><div class="meta">Loading…</div></div></section>
+</main>
+
 <footer>Portfolio project by Niket Korgaonkar · LangGraph + LangChain + FastAPI · <a href="https://github.com/NiKeT972/leadflow" target="_blank" rel="noopener">source on GitHub</a> · demo businesses and customers are fictional</footer>
 
 <div class="modal" id="modal"><div class="card">
@@ -110,7 +183,7 @@ footer{color:var(--mute);font-size:12px;text-align:center;padding:4px 0 26px}foo
   </div>
   <label>Email (optional)</label><input id="fEmail" maxlength="200" placeholder="name@example.com">
   <label>Subject</label><input id="fSubj" maxlength="200">
-  <label>Message</label><textarea id="fBody" rows="7" maxlength="4000" placeholder="Paste or type the customer's message (English or Hinglish)…"></textarea>
+  <label>Message</label><textarea id="fBody" rows="7" maxlength="4000" placeholder="Paste or type the customer's message (English or Hinglish)… Try a prompt injection too!"></textarea>
   <div id="fErr"></div>
   <div class="btns" style="margin-top:12px"><button class="btn" id="addBtn">Add &amp; process</button></div>
 </div></div>
@@ -123,27 +196,56 @@ window._mermaid = mermaid; mermaid.initialize({startOnLoad:false, theme:"base", 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const inr = n => "₹" + Number(n || 0).toLocaleString("en-IN");
-let META = null, BIZ = "ca", LEADS = {}, SEL = null, BUSY = new Set();
+const store = {get(k, d){ try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v) } catch(e){ return d } },
+               set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)) } catch(e){} },
+               del(k){ try { localStorage.removeItem(k) } catch(e){} }};
+let META = null, HEALTH = {}, BIZ = "ca", LEADS = {}, SEL = null, BUSY = new Set();
+let CUSTOM = store.get("leadflow:custom", null), DOCS = store.get("leadflow:docs", []), ADMIN = store.get("leadflow:admin", {token:"", bizId:""});
+const isLive = () => BIZ.startsWith("live:");
+const ago = sec => sec < 60 ? Math.round(sec) + "s" : sec < 3600 ? Math.round(sec / 60) + " min" : sec < 86400 ? (sec / 3600).toFixed(1) + " h" : (sec / 86400).toFixed(1) + " days";
 
-// Leads live in this browser only (localStorage), so each visitor gets their own inbox. Storage can be unavailable.
-const KEY = () => "leadflow:" + BIZ;
-function save(){ try { localStorage.setItem(KEY(), JSON.stringify(LEADS)); localStorage.setItem("leadflow:biz", BIZ) } catch(e){} }
-function load(){
-  try { LEADS = JSON.parse(localStorage.getItem(KEY()) || "null") } catch(e){ LEADS = null }
-  if (!LEADS) { LEADS = {}; (META.samples[BIZ] || []).forEach(e => LEADS[e.id] = {id:e.id, enquiry:e}) }
+// ---------------------------------------------------------------- theme + tabs
+function setTheme(t){ document.documentElement.dataset.theme = t; $("themeBtn").textContent = t === "dark" ? "☀️" : "🌙"; store.set("leadflow:theme", t) }
+setTheme(store.get("leadflow:theme", "light"));
+$("themeBtn").onclick = () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+document.querySelectorAll(".tab").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x === b));
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("on", v.id === b.dataset.view));
+  if (b.dataset.view === "evalView") renderEval();
+  if (b.dataset.view === "settingsView") fillSettings();
+});
+
+// ---------------------------------------------------------------- data
+const KEY = () => "leadflow:inbox:" + BIZ;   // separate from leadflow:custom (the saved business itself)
+function save(){ if (!isLive()) store.set(KEY(), LEADS); store.set("leadflow:biz", BIZ) }
+async function load(){
+  if (isLive()) { await loadLive(); return }
+  LEADS = store.get(KEY(), null);
+  if (!LEADS) { LEADS = {}; (BIZ === "custom" ? [] : (META.samples[BIZ] || [])).forEach(e => LEADS[e.id] = {id:e.id, enquiry:e}) }
 }
-
-async function api(path, body){
-  const r = await fetch(path, body ? {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)} : {});
+async function loadLive(){
+  try {
+    const rows = await api("/api/leads?business_id=" + encodeURIComponent(BIZ.slice(5)), null, {"X-Admin-Token": ADMIN.token});
+    LEADS = {}; rows.forEach(r => LEADS[r.id] = {id:r.id, enquiry:r.enquiry, result:r.result, server:true, created_at:r.created_at});
+  } catch(err) { LEADS = {}; $("detail").innerHTML = `<div class="card err">${esc(err.message)}</div>` }
+}
+async function api(path, body, headers = {}){
+  const r = await fetch(path, body ? {method:"POST", headers:{"Content-Type":"application/json", ...headers}, body:JSON.stringify(body)} : {headers});
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(typeof j.detail === "string" ? j.detail : (j.detail?.[0]?.msg || "Request failed (" + r.status + ")"));
   return j;
 }
-
-function statusOf(l){
-  if (BUSY.has(l.id)) return "working";
-  return l.result?.state?.status || "new";
+function profileText(){
+  if (BIZ === "custom" && CUSTOM) return `Business: ${CUSTOM.name} (${CUSTOM.kind}), ${CUSTOM.city}\nHours: ${CUSTOM.hours}\n` +
+    CUSTOM.services.map(s => `Service: ${s.name} - ${s.price}`).join("\n") + "\n" + (CUSTOM.faq || []).map(f => `FAQ (${f.q}): ${f.a}`).join("\n") +
+    "\n\nDocuments: " + (DOCS.map(d => d.name).join(", ") || "none");
+  const p = META.profiles[BIZ]; if (!p) return "Live inbox for " + BIZ.slice(5);
+  return p.kb + "\n\nDocuments: " + p.docs.join(", ");
 }
+
+// ---------------------------------------------------------------- inbox
+function statusOf(l){ return BUSY.has(l.id) ? "working" : (l.result?.state?.status || "new") }
+function followupDue(l){ const st = l.result?.state; return st?.status === "done" && st.approved_at && (Date.now() / 1000 - st.approved_at) > 172800 && !l.followed_up }
 function chipFor(l){
   const s = statusOf(l), st = l.result?.state;
   if (s === "working") return `<span class="chip c-new"><span class="spinner"></span>running</span>`;
@@ -152,18 +254,21 @@ function chipFor(l){
   if (s === "rejected") return `<span class="chip c-rejected">archived</span>`;
   const pr = st.lead_score?.priority, cat = st.classification?.category;
   const tag = pr && pr !== "n/a" ? `<span class="chip c-${pr}">${pr}</span>` : `<span class="chip c-cat">${esc(cat.replace("_"," "))}</span>`;
-  return tag + " " + (s === "awaiting_review" ? `<span class="chip c-review">review</span>` : `<span class="chip c-done">sent</span>`);
+  const flag = st.needs_human?.length ? `<span class="chip c-warm" title="${esc(st.needs_human.join("; "))}">⚠</span> ` : "";
+  return flag + tag + " " + (s === "awaiting_review" ? `<span class="chip c-review">review</span>` : followupDue(l) ? `<span class="chip c-warm">follow up</span>` : `<span class="chip c-done">sent</span>`);
 }
-
 function renderInbox(){
-  const order = Object.values(LEADS);
-  $("inbox").innerHTML = order.map(l => `<li data-id="${esc(l.id)}" class="${l.id === SEL ? "sel" : ""}">
+  $("inboxTitle").textContent = isLive() ? "Live inbox" : "Inbox";
+  ["allBtn", "resetBtn", "newBtn"].forEach(i => $(i).style.display = isLive() ? "none" : "");
+  $("refreshBtn").style.display = isLive() ? "" : "none";
+  const list = Object.values(LEADS);
+  $("inbox").innerHTML = list.length ? list.map(l => `<li data-id="${esc(l.id)}" class="${l.id === SEL ? "sel" : ""}">
     <div class="row1"><span class="who"><span class="chan">${{email:"✉️","web form":"🌐",whatsapp:"💬"}[l.enquiry.channel] || "✉️"}</span>${esc(l.enquiry.from_name || "Unknown")}</span><span>${chipFor(l)}</span></div>
-    <div class="subj">${esc(l.enquiry.subject || l.enquiry.body.slice(0, 60))}</div></li>`).join("");
-  $("inbox").querySelectorAll("li").forEach(li => li.onclick = () => { SEL = li.dataset.id; renderAll(); if (innerWidth < 960) $("detail").scrollIntoView({behavior:"smooth"}) });
+    <div class="subj">${esc(l.enquiry.subject || l.enquiry.body.slice(0, 60))}</div></li>`).join("")
+    : `<li class="meta" style="cursor:default">${isLive() ? "No enquiries yet. They appear here when the Gmail script, your website form or WhatsApp sends one." : "Inbox is empty. Press + New to add an enquiry."}</li>`;
+  $("inbox").querySelectorAll("li[data-id]").forEach(li => li.onclick = () => { SEL = li.dataset.id; renderAll(); if (innerWidth < 960) $("detail").scrollIntoView({behavior:"smooth"}) });
   renderStats();
 }
-
 function renderStats(){
   const done = Object.values(LEADS).filter(l => l.result);
   const sales = done.filter(l => l.result.state.classification?.category === "sales");
@@ -171,45 +276,50 @@ function renderStats(){
   const review = done.filter(l => l.result.state.status === "awaiting_review").length;
   const spam = done.filter(l => l.result.state.status === "spam").length;
   const value = sales.reduce((a, l) => a + (l.result.state.lead_score?.est_value || 0), 0);
+  const ms = done.map(l => l.result.state.run_ms).filter(Boolean);
   $("stats").innerHTML = [[done.length + "/" + Object.keys(LEADS).length, "processed"], [hot, "hot leads"], [review, "awaiting your approval"],
-    [spam, "spam filtered"], [inr(value), "est. pipeline value"]].map(([b, s]) => `<div class="stat"><b>${b}</b><span>${s}</span></div>`).join("");
+    [spam, "spam filtered"], [inr(value), "est. pipeline value"]].map(([b, s]) => `<div class="stat"><b>${b}</b><span>${s}</span></div>`).join("")
+    + (ms.length ? "" : "");
 }
 
-const DOT = {ingest:"IN",classify:"CL",extract:"EX",score:"SC",draft_reply:"DR",check_reply:"CK",human_review:"HU",log_to_sheet:"GS",notify_team:"TG",send_reply:"EM",finalize:"✓",archive:"AR"};
+const DOT = {ingest:"IN",guard:"GD",classify:"CL",extract:"EX",score:"SC",retrieve:"RG",draft_reply:"DR",check_reply:"CK",human_review:"HU",log_to_sheet:"GS",notify_team:"TG",send_reply:"EM",finalize:"✓",archive:"AR"};
 function traceHtml(st, paused){
   const items = (st.trace || []).map(t => `<li><span class="dot ${t.mode}">${DOT[t.node] || "•"}</span><div><span class="tn">${t.node}</span><span class="tag ${t.mode}">${t.mode}</span><div class="td">${esc(t.detail)}</div></div></li>`);
-  if (paused) items.push(`<li><span class="dot pause">⏸</span><div><span class="tn">human_review</span><span class="tag human">waiting</span><div class="td">Graph paused. Nothing has been sent; approve, revise or reject below.</div></div></li>`);
+  if (paused) items.push(`<li><span class="dot pause">⏸</span><div><span class="tn">human_review</span><span class="tag human">waiting</span><div class="td">Graph paused. Nothing has been sent; approve, revise or reject above.</div></div></li>`);
   return `<ul class="trace">${items.join("")}</ul>`;
 }
-
 function ring(score, pr){
   const col = {hot:"var(--hot)", warm:"var(--warm)", cold:"var(--cold)"}[pr] || "var(--sim)";
   return `<div class="ring" style="background:conic-gradient(${col} ${score * 3.6}deg, var(--line) 0)"><div style="color:${col}">${score}</div></div>`;
 }
-
 function actionHtml(a){
   const mode = a.ok === false ? "error" : a.mode;
-  const title = {log_to_sheet:"Google Sheets", notify_team:"Telegram alert", send_reply:"Reply email"}[a.name];
+  const title = {log_to_sheet:"Google Sheets", notify_team:"Telegram alert", send_reply:a.detail?.includes("WhatsApp") ? "WhatsApp reply" : "Reply email"}[a.name];
   let body = "";
   if (a.name === "log_to_sheet") body = `<table class="kv">${Object.entries(a.payload).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join("")}</table>`;
   else if (a.name === "notify_team") body = `<pre>${esc(a.payload.text)}</pre>`;
   else body = `<div class="meta">To: ${esc(a.payload.to || "—")}<br>Subject: ${esc(a.payload.subject)}</div><pre>${esc(a.payload.text)}</pre>`;
   return `<div class="act"><h4>${title}<span class="chip m-${mode}">${mode}</span></h4><div class="meta">${esc(a.detail)}</div>${body}</div>`;
 }
+function highlightCites(t){ return esc(t).replace(/\[(\d)\]/g, '<b style="color:var(--human)">[$1]</b>') }
 
 function renderDetail(){
   const l = LEADS[SEL];
-  if (!l) { $("detail").innerHTML = `<div class="card empty">Pick an enquiry from the inbox, or press <b>Process all</b> to triage the whole inbox.</div>`; return }
+  if (!l) { if (!isLive() || Object.keys(LEADS).length) $("detail").innerHTML = `<div class="card empty">Pick an enquiry from the inbox${isLive() ? "" : ", or press <b>Process all</b> to triage the whole inbox"}.</div>`; return }
   const e = l.enquiry, r = l.result, st = r?.state, busy = BUSY.has(l.id);
+  const times = st ? [`AI processed in ${st.run_ms ?? "?"} ms`, st.approved_at && st.received_at ? `approved ${ago(st.approved_at - st.received_at)} after it arrived` : "",
+                      st.received_at ? `received ${ago(Date.now() / 1000 - st.received_at)} ago` : ""].filter(Boolean) : [];
   let h = `<div class="card"><h2>${esc(e.subject || "(no subject)")} <span>${r ? chipFor(l) : ""}</span></h2>
-    <div class="meta">${esc(e.channel)} · from <b>${esc(e.from_name || "unknown")}</b>${e.from_email ? " &lt;" + esc(e.from_email) + "&gt;" : ""}</div>
+    <div class="meta">${esc(e.channel)} · from <b>${esc(e.from_name || "unknown")}</b>${e.from_email ? " &lt;" + esc(e.from_email) + "&gt;" : ""}${e.reply_to ? " · +" + esc(e.reply_to) : ""}</div>
     <div class="msg">${esc(e.body)}</div>
+    ${times.length ? `<div class="times">${times.map(t => `<span class="pill">⏱ ${esc(t)}</span>`).join("")}</div>` : ""}
     ${!r ? `<div class="btns" style="margin-top:12px"><button class="btn" id="runBtn" ${busy ? "disabled" : ""}>${busy ? '<span class="spinner"></span>Running workflow…' : "Run workflow"}</button>
       <select id="tone"><option value="friendly">friendly tone</option><option value="formal">formal tone</option></select></div>` : ""}
     ${l.error ? `<div class="err">${esc(l.error)}</div>` : ""}</div>`;
   if (st) {
+    if (st.needs_human?.length && st.status === "awaiting_review") h += `<div class="flag"><b>⚠ Needs a closer look</b>${st.needs_human.map(esc).join("<br>")}</div>`;
     if (st.status === "spam") h += `<div class="banner spam">Filtered as spam. No reply drafted, nobody alerted, no human time spent.</div>`;
-    if (st.status === "done" || st.status === "done_with_errors") h += `<div class="banner done">Approved and processed: ${(st.actions || []).map(a => a.detail).join(" · ")}</div>`;
+    if (st.status === "done" || st.status === "done_with_errors") h += `<div class="banner done">Approved and processed: ${(st.actions || []).map(a => esc(a.detail)).join(" · ")}</div>`;
     if (st.status === "rejected") h += `<div class="banner spam">Archived without a reply.</div>`;
     if (st.fields) {
       const c = st.classification, f = st.fields, sc = st.lead_score;
@@ -222,20 +332,24 @@ function renderDetail(){
           <dt>Language</dt><dd>${esc(c.language)}</dd><dt>Name</dt><dd>${esc(f.name)}</dd>
           <dt>Phone</dt><dd>${esc(f.phone || "—")}</dd><dt>Email</dt><dd>${esc(f.email || "—")}</dd>
           <dt>Services</dt><dd>${esc((f.services || []).join(", ") || "—")}</dd><dt>Budget</dt><dd>${f.budget_inr ? inr(f.budget_inr) : "not stated"}</dd>
-          <dt>Timeline</dt><dd>${esc(f.timeline)}</dd><dt>Need</dt><dd>${esc(f.need)}</dd></dl></div></div>`;
+          <dt>Timeline</dt><dd>${esc(f.timeline)}</dd><dt>Need</dt><dd>${esc(f.need)}</dd>
+          <dt>Safety</dt><dd>${st.guard?.injection?.length ? "⚠ " + esc(st.guard.injection.join("; ")) : "✓ no prompt injection found"}</dd></dl></div></div>`;
     }
     if (st.status === "awaiting_review") {
       const ck = st.check || {ok:true, issues:[]};
       h += `<div class="card review"><h2>Your approval <span class="chip c-review">graph paused</span></h2>
         <div class="meta">Edit the reply if you like. Approving logs the lead, alerts the team and sends this reply, all in parallel.</div>
         <textarea id="reply" rows="12">${esc(st.draft)}</textarea>
-        <div class="check ${ck.ok ? "ok" : "bad"}">${ck.ok ? "✓ Reply check passed: every price and number comes from your knowledge base or the customer's message, no over-promising." : "⚠ Reply check: " + esc(ck.issues.join("; ")) + ". Fix it before approving."}</div>
+        <div class="check ${ck.ok ? "ok" : "bad"}">${ck.ok ? "✓ Reply check passed: every price, number and offer comes from your knowledge base, your documents or the customer's message." : "⚠ Reply check: " + esc(ck.issues.join("; ")) + ". Fix it before approving."}</div>
         <div class="btns"><button class="btn" id="approveBtn" ${busy ? "disabled" : ""}>${busy ? '<span class="spinner"></span>Working…' : "Approve &amp; send"}</button>
           <input id="feedback" placeholder="…or tell the AI what to change (e.g. 'make it formal', 'shorter')" style="flex:1;min-width:200px" maxlength="500">
           <button class="btn ghost" id="reviseBtn" ${busy ? "disabled" : ""}>Revise</button><button class="btn danger" id="rejectBtn" ${busy ? "disabled" : ""}>Reject</button></div></div>`;
     }
+    if (st.sources?.length) h += `<div class="card"><h2>Sources used <span class="chip c-cat">RAG · BM25</span></h2><div class="sources">${st.sources.map(s =>
+        `<div class="src"><b>[${s.id}]</b> ${esc(s.doc)} › ${esc(s.section)}<div class="meta">relevance ${s.score}</div>${esc(s.text.slice(0, 320))}${s.text.length > 320 ? "…" : ""}</div>`).join("")}</div></div>`;
     if (st.actions?.length) h += `<div class="card"><h2>What happened</h2><div class="grid3">${["log_to_sheet", "notify_team", "send_reply"].map(n => st.actions.find(a => a.name === n)).filter(Boolean).map(actionHtml).join("")}</div>
       ${st.actions.some(a => a.mode === "simulated") ? `<div class="meta" style="margin:10px 0 0">“simulated” = the integration isn't connected on this demo, so it shows exactly what would be sent. Add the keys in the environment to make it live.</div>` : ""}</div>`;
+    if (r.done_token && st.classification?.category === "sales") h += followupCard(l);
     h += `<div class="card"><h2>Workflow trace</h2>${traceHtml(st, st.status === "awaiting_review")}</div>`;
   }
   $("detail").innerHTML = h;
@@ -245,24 +359,55 @@ function renderDetail(){
     $("reviseBtn").onclick = () => { const fb = $("feedback").value.trim(); if (!fb) { $("feedback").focus(); $("feedback").placeholder = "Type what to change first"; return } resumeLead(l.id, "revise", {feedback: fb}) };
     $("rejectBtn").onclick = () => resumeLead(l.id, "reject");
   }
+  if ($("fuDraftBtn")) $("fuDraftBtn").onclick = () => draftFollowup(l.id);
+  if ($("fuSendBtn")) $("fuSendBtn").onclick = () => sendFollowup(l.id);
+}
+
+function followupCard(l){
+  const fu = l.followup, st = l.result.state;
+  const days = st.approved_at ? Math.max(2, Math.round((Date.now() / 1000 - st.approved_at) / 86400)) : 2;
+  let h = `<div class="card"><h2>Follow-up <span class="chip ${followupDue(l) ? "c-warm" : "c-new"}">${followupDue(l) ? "due" : "if no reply in 48 h"}</span></h2>`;
+  if (l.followed_up) return h + `<div class="ok-msg">✓ ${esc(l.followed_up)}</div></div>`;
+  if (!fu) return h + `<div class="meta">Most leads are lost because nobody follows up. When a customer goes quiet, LeadFlow drafts a polite nudge that goes through the same reply check.</div>
+    <button class="btn sm" id="fuDraftBtn" ${BUSY.has(l.id) ? "disabled" : ""}>Draft follow-up${followupDue(l) ? "" : " (as if " + days + " days passed)"}</button></div>`;
+  return h + `<textarea id="fuText" rows="6">${esc(fu.draft)}</textarea>
+    <div class="check ${fu.check.ok ? "ok" : "bad"}">${fu.check.ok ? "✓ Reply check passed" : "⚠ " + esc(fu.check.issues.join("; "))}</div>
+    <div class="btns"><button class="btn sm" id="fuSendBtn">Send follow-up</button></div></div>`;
+}
+async function draftFollowup(id){
+  const l = LEADS[id]; BUSY.add(id); renderAll();
+  try { l.followup = await api("/api/followup", {token:l.result.done_token, days:2}) } catch(err) { l.error = err.message }
+  BUSY.delete(id); save(); renderAll();
+}
+async function sendFollowup(id){
+  const l = LEADS[id];
+  try { const r = await api("/api/followup/send", {token:l.result.done_token, text:$("fuText").value}); l.followed_up = r.action.detail; delete l.followup }
+  catch(err) { l.error = err.message }
+  save(); renderAll();
 }
 
 function renderAll(){ renderInbox(); renderDetail() }
 
+function runBody(l, tone){
+  const {channel, from_name, from_email, subject, body} = l.enquiry;
+  const b = {enquiry:{channel, from_name, from_email, subject, body}, profile_id:BIZ, tone};
+  if (BIZ === "custom") { b.profile = CUSTOM; b.docs = DOCS }
+  return b;
+}
 async function runLead(id, tone = "friendly"){
   const l = LEADS[id]; if (BUSY.has(id)) return;
   BUSY.add(id); delete l.error; renderAll();
-  try {
-    const {channel, from_name, from_email, subject, body} = l.enquiry;
-    l.result = await api("/api/run", {enquiry:{channel, from_name, from_email, subject, body}, profile_id:BIZ, tone});
-  } catch(err) { l.error = err.message }
+  try { l.result = await api("/api/run", runBody(l, tone)) } catch(err) { l.error = err.message }
   BUSY.delete(id); save(); renderAll();
 }
-
 async function resumeLead(id, decision, extra = {}){
   const l = LEADS[id]; if (BUSY.has(id)) return;
   BUSY.add(id); delete l.error; renderAll();
-  try { l.result = await api("/api/resume", {token:l.result.token, decision, ...extra}) } catch(err) { l.error = err.message }
+  try {
+    const body = {token:l.result.token, decision, ...extra};
+    if (l.server) body.lead_id = l.id;
+    l.result = await api("/api/resume", body, l.server ? {"X-Admin-Token": ADMIN.token} : {});
+  } catch(err) { l.error = err.message }
   BUSY.delete(id); save(); renderAll();
 }
 
@@ -274,7 +419,8 @@ $("allBtn").onclick = async () => {
              || Object.values(LEADS).find(l => l.result?.state?.status === "awaiting_review");
   if (first) { SEL = first.id; renderAll() }
 };
-$("resetBtn").onclick = () => { try { localStorage.removeItem(KEY()) } catch(e){} LEADS = null; load(); SEL = null; renderAll() };
+$("resetBtn").onclick = async () => { store.del(KEY()); LEADS = null; await load(); SEL = null; renderAll() };
+$("refreshBtn").onclick = async () => { await loadLive(); renderAll() };
 $("newBtn").onclick = () => { $("modal").classList.add("open"); $("fErr").innerHTML = ""; $("fBody").focus() };
 $("closeModal").onclick = () => $("modal").classList.remove("open");
 $("addBtn").onclick = () => {
@@ -285,23 +431,124 @@ $("addBtn").onclick = () => {
   ["fName", "fEmail", "fSubj", "fBody"].forEach(i => $(i).value = "");
   $("modal").classList.remove("open"); SEL = id; save(); runLead(id);
 };
-$("biz").onchange = () => { BIZ = $("biz").value; load(); SEL = null; save(); setBiz(); renderAll() };
+$("biz").onchange = async () => { BIZ = $("biz").value; SEL = null; store.set("leadflow:biz", BIZ); await load(); setBiz(); renderAll() };
 
-function setBiz(){ $("kb").textContent = META.profiles[BIZ].kb }
+function bizOptions(){
+  const opts = Object.values(META.profiles).map(p => [p.id, `${p.name} (${p.kind})`]);
+  if (CUSTOM) opts.push(["custom", `★ ${CUSTOM.name} (your business)`]);
+  if (ADMIN.token && HEALTH.storage) { opts.push(["live:" + (ADMIN.bizId || "ca"), `📥 Live inbox: ${ADMIN.bizId || "ca"}`]) }
+  if (!opts.some(o => o[0] === BIZ)) BIZ = "ca";
+  $("biz").innerHTML = opts.map(([v, t]) => `<option value="${esc(v)}" ${v === BIZ ? "selected" : ""}>${esc(t)}</option>`).join("");
+}
+function setBiz(){ $("kb").textContent = profileText() }
+
+// ---------------------------------------------------------------- settings
+const EXAMPLE = {name:"Glow Studio", kind:"salon", city:"Bandra West, Mumbai", hours:"Tue–Sun, 11 am – 8 pm", next_step:"a free consultation with our senior stylist", min_deal:2000,
+  signature:"Team Glow Studio, Bandra West",
+  services:[{name:"Bridal makeup", price:"₹15,000 – ₹25,000", value:20000, keywords:["bridal","wedding makeup","shaadi"]},
+            {name:"Party makeup", price:"₹4,500", value:4500, keywords:["party makeup","engagement","sangeet"]},
+            {name:"Hair spa", price:"₹1,800", value:1800, keywords:["hair spa","hair treatment"]},
+            {name:"Keratin treatment", price:"₹6,000 – ₹9,000", value:7500, keywords:["keratin","smoothening","frizz"]}],
+  faq:[{q:"parking", keywords:["parking","car"], a:"There is paid parking right next to the studio."},
+       {q:"home visits", keywords:["home","venue","come to"], a:"For bridal bookings our artists can come to your home or venue in Mumbai."}],
+  guardrail:"Never promise how a treatment will turn out; the stylist confirms after a consultation."};
+const EXAMPLE_DOC = {name:"bridal-policies", text:"# Bridal policies\n\n## Trial session\nA bridal trial is ₹3,000 and is adjusted against the final bill if you book with us.\n\n## Booking\nWe confirm a bridal date with a 30% advance. Wedding season dates (November to February) fill up 2 to 3 months ahead.\n\n## Products\nWe use MAC, Huda Beauty and Kryolan products for bridal makeup, and airbrush makeup is available on request."};
+function fillSettings(p = CUSTOM){
+  p = p || {services:[], faq:[]};
+  $("sName").value = p.name || ""; $("sKind").value = p.kind || ""; $("sCity").value = p.city || ""; $("sHours").value = p.hours || "";
+  $("sNext").value = p.next_step || ""; $("sMin").value = p.min_deal || ""; $("sSign").value = p.signature || ""; $("sRule").value = p.guardrail || "";
+  $("sServices").value = (p.services || []).map(s => [s.name, s.price, s.value || "", (s.keywords || []).join(", ")].join(" | ")).join("\n");
+  $("sFaq").value = (p.faq || []).map(f => [f.q, (f.keywords || []).join(", "), f.a].join(" | ")).join("\n");
+  $("adminTok").value = ADMIN.token; $("bizId").value = ADMIN.bizId;
+  renderDocs();
+}
+function readSettings(){
+  const split = l => l.split("|").map(x => x.trim());
+  const services = $("sServices").value.split("\n").filter(l => l.trim()).map(l => { const [name, price, value, kw] = split(l);
+    return {name, price: price || "", value: parseInt((value || "0").replace(/[^\d]/g, "")) || 0, keywords: (kw || "").split(",").map(k => k.trim()).filter(Boolean)} });
+  const faq = $("sFaq").value.split("\n").filter(l => l.trim()).map(l => { const [q, kw, a] = split(l);
+    return {q: q || "info", keywords: (kw || q || "").split(",").map(k => k.trim()).filter(Boolean), a: a || ""} });
+  return {name:$("sName").value.trim(), kind:$("sKind").value.trim() || "business", city:$("sCity").value.trim(), hours:$("sHours").value.trim(),
+    next_step:$("sNext").value.trim() || "a quick call with our team", min_deal:parseInt($("sMin").value) || 0, signature:$("sSign").value.trim(),
+    services, faq, guardrail:$("sRule").value.trim()};
+}
+$("loadDemoBtn").onclick = () => { fillSettings(EXAMPLE); if (!DOCS.length) { DOCS = [EXAMPLE_DOC]; store.set("leadflow:docs", DOCS); renderDocs() } };
+$("saveBizBtn").onclick = async () => {
+  const p = readSettings();
+  // Validate on the server with a dry run, so the error messages match the API's rules.
+  try {
+    await api("/api/run", {enquiry:{channel:"email", body:"Hello, I'd like to know your prices."}, profile_id:"custom", profile:p, docs:DOCS});
+    CUSTOM = p; store.set("leadflow:custom", CUSTOM); BIZ = "custom"; store.set("leadflow:biz", BIZ); bizOptions(); await load(); setBiz(); renderAll();
+    $("sErr").innerHTML = `<div class="ok-msg">✓ Saved. “${esc(p.name)}” is now selected. Add a + New enquiry in the Inbox to try it.</div>`;
+  } catch(err) { $("sErr").innerHTML = `<div class="err">${esc(err.message)}</div>` }
+};
+function renderDocs(){
+  $("docList").innerHTML = DOCS.length ? DOCS.map((d, i) => `<li><span>📄 ${esc(d.name)} <span class="meta">· ${d.text.length.toLocaleString()} chars</span></span><button class="iconbtn" data-del="${i}">✕</button></li>`).join("")
+    : `<li class="meta">No documents yet. Your business still works from the services and FAQs on the left.</li>`;
+  $("docList").querySelectorAll("[data-del]").forEach(b => b.onclick = () => { DOCS.splice(+b.dataset.del, 1); store.set("leadflow:docs", DOCS); renderDocs(); setBiz() });
+}
+function addDoc(d){
+  if (DOCS.length >= 8) { $("docErr").innerHTML = `<div class="err">Up to 8 documents.</div>`; return }
+  DOCS.push({name:d.name.slice(0, 120), text:d.text.slice(0, 30000)}); store.set("leadflow:docs", DOCS); renderDocs(); setBiz(); $("docErr").innerHTML = "";
+}
+$("docFile").onchange = async ev => {
+  const f = ev.target.files[0]; if (!f) return;
+  const fd = new FormData(); fd.append("file", f);
+  $("docErr").innerHTML = `<div class="meta"><span class="spinner"></span>Reading ${esc(f.name)}…</div>`;
+  try { const r = await fetch("/api/extract-text", {method:"POST", body:fd}); const j = await r.json(); if (!r.ok) throw new Error(j.detail || "Upload failed"); addDoc(j) }
+  catch(err) { $("docErr").innerHTML = `<div class="err">${esc(err.message)}</div>` }
+  ev.target.value = "";
+};
+$("pasteDocBtn").onclick = () => $("pasteBox").style.display = $("pasteBox").style.display === "none" ? "" : "none";
+$("addPasteBtn").onclick = () => { const t = $("pasteText").value.trim(); if (t.length < 20) return; addDoc({name:$("pasteName").value.trim() || "notes", text:t}); $("pasteText").value = ""; $("pasteName").value = "" };
+$("saveAdminBtn").onclick = async () => {
+  ADMIN = {token:$("adminTok").value.trim(), bizId:$("bizId").value.trim() || "ca"}; store.set("leadflow:admin", ADMIN);
+  if (!HEALTH.storage) { $("adminMsg").innerHTML = `<div class="err">The server has no Supabase connection yet (SUPABASE_URL, SUPABASE_SERVICE_KEY), so there's no live inbox to show.</div>`; return }
+  try { await api("/api/leads?business_id=" + encodeURIComponent(ADMIN.bizId), null, {"X-Admin-Token": ADMIN.token});
+    BIZ = "live:" + ADMIN.bizId; store.set("leadflow:biz", BIZ); bizOptions(); await load(); setBiz(); renderAll();
+    $("adminMsg").innerHTML = `<div class="ok-msg">✓ Connected. The live inbox is selected at the top.</div>` }
+  catch(err) { $("adminMsg").innerHTML = `<div class="err">${esc(err.message)}</div>` }
+};
+$("pushBizBtn").onclick = async () => {
+  const bizId = $("bizId").value.trim(), tok = $("adminTok").value.trim();
+  if (!CUSTOM) { $("adminMsg").innerHTML = `<div class="err">Save your business on the left first.</div>`; return }
+  try { await api("/api/business", {business_id:bizId, profile:CUSTOM, docs:DOCS}, {"X-Admin-Token": tok});
+    $("adminMsg").innerHTML = `<div class="ok-msg">✓ Saved on the server as “${esc(bizId)}”. Use this id in the Gmail script, website form or WHATSAPP_BUSINESS_ID.</div>` }
+  catch(err) { $("adminMsg").innerHTML = `<div class="err">${esc(err.message)}</div>` }
+};
+
+// ---------------------------------------------------------------- evaluation
+const LABELS = {category_accuracy:"Category accuracy (sales / support / partnership / job / spam)", spam_precision:"Spam precision (archived things that really were spam)",
+  spam_recall:"Spam recall (spam that got archived)", service_precision:"Service extraction precision", service_recall:"Service extraction recall", service_f1:"Service extraction F1",
+  budget_accuracy:"Budget extraction accuracy", timeline_accuracy:"Timeline accuracy", phone_accuracy:"Phone number accuracy",
+  injection_recall:"Prompt-injection attempts flagged", injection_false_alarms:"Injection false alarms (count)", sales_drafts_passing_check:"Sales drafts passing the reply check",
+  reply_check_blocks_bad:"Reply check blocks bad replies", reply_check_passes_good:"Reply check passes good replies", avg_ms_per_enquiry:"Average time per enquiry (ms)"};
+async function renderEval(){
+  let reps; try { reps = await api("/api/eval") } catch(err) { $("evalCard").innerHTML = `<h2>Evaluation</h2><div class="err">${esc(err.message)}</div>`; return }
+  const cols = [["rules_v1_before_fixes", "Rules · first run"], ["rules", "Rules · now"], ["llm", "LLM"]].filter(([k]) => reps[k]);
+  const cls = (k, v) => v == null ? "" : k.includes("false_alarms") ? (v === 0 ? "good" : "badv") : k.startsWith("avg") ? "" : v >= 95 ? "good" : v >= 80 ? "meh" : "badv";
+  const any = reps.rules || reps.llm;
+  $("evalCard").innerHTML = `<h2>Evaluation <span class="chip c-cat">${any ? any.cases : 0} hand-labelled enquiries + 16 reply-check cases</span></h2>
+    <div class="meta">Every number comes from <code>python scripts/eval.py</code> on <code>evals/cases.jsonl</code>: 50 enquiries across the 3 businesses (English and Hinglish, spam, support, job and partnership mails, prompt-injection attempts), labelled by hand before the system was run on them.
+    The first run found 3 gaps in the reply check, which were fixed with general rules (not by special-casing those examples). The rules and these test cases were written by the same person, so treat the rules column as optimistic; the LLM column is the independent test.</div>
+    <table class="metrics"><tr><th>Metric</th>${cols.map(([, t]) => `<th>${t}</th>`).join("")}</tr>
+    ${Object.keys(LABELS).map(k => `<tr><td>${LABELS[k]}</td>${cols.map(([c]) => { const v = reps[c].metrics[k]; return `<td class="num ${cls(k, v)}">${v ?? "—"}${v != null && !k.startsWith("avg") && !k.includes("alarms") ? "%" : ""}</td>` }).join("")}</tr>`).join("")}</table>
+    ${reps.llm ? "" : `<div class="meta" style="margin-top:10px">LLM column: run <code>GROQ_API_KEY=… python scripts/eval.py</code> and commit <code>evals/report_llm.json</code> to fill it in.</div>`}
+    ${cols.map(([c, t]) => reps[c].misses?.length ? `<h3>${t}: category misses</h3><div class="meta">${reps[c].misses.map(m => `${m.id}: expected ${m.expected}, got ${m.got}`).join(" · ")}</div>` : "").join("")}
+    ${reps.rules?.service_misses?.length ? `<h3>Rules · now: service extraction differences</h3><div class="meta">${reps.rules.service_misses.map(m => `${m.id}: expected [${m.expected.join(", ")}], got [${m.got.join(", ")}]`).map(esc).join("<br>")}</div>` : ""}`;
+}
 
 window.renderGraph = function(){ if (window._mermaid && window._graphSrc) { $("graph").textContent = window._graphSrc; window._mermaid.run({nodes:[$("graph")]}).catch(() => {}) } };
 
 (async () => {
-  META = await api("/api/meta");
-  try { BIZ = localStorage.getItem("leadflow:biz") || "ca" } catch(e){}
-  if (!META.profiles[BIZ]) BIZ = "ca";
-  $("biz").innerHTML = Object.values(META.profiles).map(p => `<option value="${p.id}" ${p.id === BIZ ? "selected" : ""}>${esc(p.name)} (${esc(p.kind)})</option>`).join("");
-  load(); setBiz(); renderAll();
+  [META, HEALTH] = await Promise.all([api("/api/meta"), api("/api/health")]);
+  BIZ = store.get("leadflow:biz", "ca");
+  bizOptions(); await load(); setBiz(); renderAll();
   window._graphSrc = META.graph; window.renderGraph();
-  const h = await api("/api/health");
-  $("mode").className = "pill " + (h.llm ? "llm" : "");
-  $("mode").textContent = h.llm ? "AI: " + h.model : "AI: built-in rules (no API key)";
-  $("int").innerHTML = [["sheets", "Sheets"], ["telegram", "Telegram"], ["email", "Email"]].map(([k, n]) => `<span class="pill ${h.integrations[k] ? "on" : ""}" title="${h.integrations[k] ? "connected" : "simulated – not connected"}">${n} ${h.integrations[k] ? "●" : "○"}</span>`).join("");
+  $("mode").className = "pill " + (HEALTH.llm ? "llm" : "");
+  $("mode").textContent = HEALTH.llm ? "AI: " + HEALTH.model : "AI: built-in rules (no API key)";
+  $("int").innerHTML = [["sheets", "Sheets"], ["telegram", "Telegram"], ["email", "Email"], ["whatsapp", "WhatsApp"]].map(([k, n]) => `<span class="pill ${HEALTH.integrations[k] ? "on" : ""}" title="${HEALTH.integrations[k] ? "connected" : "simulated – not connected"}">${n} ${HEALTH.integrations[k] ? "●" : "○"}</span>`).join("");
+  $("storagePill").textContent = HEALTH.storage ? "Supabase connected" : "not connected"; $("storagePill").className = "chip " + (HEALTH.storage ? "c-done" : "c-new");
 })();
 </script>
 </body>

@@ -187,3 +187,56 @@ def kb_text(p: dict) -> str:
     if p.get("guardrail"):
         lines.append(f"Rule: {p['guardrail']}")
     return "\n".join(lines)
+
+
+# --------------------------------------------------------------------------- custom businesses (settings page)
+
+from pydantic import BaseModel, Field, field_validator  # noqa: E402
+
+
+class Service(BaseModel):
+    name: str = Field(min_length=2, max_length=80)
+    price: str = Field(min_length=1, max_length=80)          # shown to customers as written, e.g. "₹1,500 per month"
+    value: int = Field(0, ge=0, le=10_000_000)              # typical deal size in ₹, used for lead value
+    keywords: list[str] = Field(default_factory=list, max_length=15)
+
+    @field_validator("keywords")
+    @classmethod
+    def clean(cls, v):
+        return [k.strip().lower() for k in v if k.strip()][:15]
+
+
+class Faq(BaseModel):
+    q: str = Field(min_length=1, max_length=40)
+    keywords: list[str] = Field(default_factory=list, max_length=10)
+    a: str = Field(min_length=3, max_length=400)
+
+
+class Profile(BaseModel):
+    """A business profile. The built-in ones and the settings page both produce this shape."""
+    id: str = Field("custom", max_length=40)
+    name: str = Field(min_length=2, max_length=80)
+    kind: str = Field("business", max_length=40)
+    city: str = Field("", max_length=60)
+    signature: str = Field("", max_length=160)
+    hours: str = Field("", max_length=80)
+    next_step: str = Field("a quick call with our team", max_length=100)
+    min_deal: int = Field(0, ge=0, le=10_000_000)
+    services: list[Service] = Field(min_length=1, max_length=15)
+    faq: list[Faq] = Field(default_factory=list, max_length=10)
+    guardrail: str = Field("", max_length=200)
+
+    def as_dict(self) -> dict:
+        d = self.model_dump()
+        d["signature"] = d["signature"] or d["name"]
+        for s in d["services"]:   # a service with no keywords is matched by the words of its own name
+            if not s["keywords"]:
+                s["keywords"] = [w for w in s["name"].lower().replace("(", " ").replace(")", " ").split() if len(w) > 3]
+        return d
+
+
+def resolve_profile(profile_id: str, custom: dict | None = None) -> dict:
+    """Built-in profile by id, or a validated custom one. Raises pydantic.ValidationError on bad custom data."""
+    if custom is not None:
+        return Profile(**custom).as_dict()
+    return get_profile(profile_id)

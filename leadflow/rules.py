@@ -59,6 +59,24 @@ def detect_language(text: str) -> str:
     return "hinglish" if hits >= 2 else "english"
 
 
+# --------------------------------------------------------------------------- guard (prompt injection)
+
+# Messages that try to give the AI instructions instead of asking the business something.
+INJECTION_PATTERNS = [
+    (r"\b(ignore|disregard|forget|override)\b.{0,40}\b(instruction|rule|prompt|guideline|previous|above)", "tries to override the AI's instructions"),
+    (r"\b(system prompt|developer message|your instructions|hidden prompt)\b", "asks about the AI's hidden instructions"),
+    (r"\byou are (now|no longer)\b|\bact as\b|\bpretend (to be|you)\b|\bjailbreak\b", "tries to change the AI's role"),
+    (r"\b(reply|respond|say|write|confirm)\b.{0,30}\b(free|100% off|\d{2,3}% (off|discount))", "tells the AI to promise a discount"),
+    (r"\b(reveal|show|print|leak)\b.{0,30}\b(api key|password|other customers|database|data of)", "asks for private data"),
+    (r"<\s*/?\s*(system|assistant|instructions?)\s*>|\[\s*(system|inst)\s*\]", "contains fake system tags"),
+]
+
+
+def detect_injection(text: str) -> list[str]:
+    t = text.lower()
+    return [why for pat, why in INJECTION_PATTERNS if re.search(pat, t)]
+
+
 # --------------------------------------------------------------------------- extract
 
 PHONE = re.compile(r"(?:\+?91[\s-]?)?\b([6-9]\d{4})[\s-]?(\d{5})\b")
@@ -87,11 +105,17 @@ def _money(text: str) -> int | None:
     return None
 
 
+def _has(keyword: str, text: str) -> bool:
+    """Keyword match that must start at a word boundary, so 'come' doesn't match 'income' (prefixes like
+    'incorporat' still match 'incorporation')."""
+    return re.search(r"(?<![a-z0-9])" + re.escape(keyword), text) is not None
+
+
 def match_services(text: str, profile: dict) -> list[dict]:
     t = text.lower()
     found = []
     for s in profile["services"]:
-        hits = [k for k in s["keywords"] if k in t]
+        hits = [k for k in s["keywords"] if _has(k, t)]
         if hits:
             found.append({**s, "hits": hits})
     return sorted(found, key=lambda s: -len(s["hits"]))
@@ -99,7 +123,7 @@ def match_services(text: str, profile: dict) -> list[dict]:
 
 def match_faq(text: str, profile: dict) -> list[dict]:
     t = text.lower()
-    return [f for f in profile["faq"] if any(k in t for k in f["keywords"])]
+    return [f for f in profile["faq"] if any(_has(k, t) for k in f["keywords"])]
 
 
 def timeline(text: str) -> str:
@@ -178,18 +202,28 @@ def score(category: str, fields: dict, profile: dict, enquiry: dict) -> dict:
 
 # --------------------------------------------------------------------------- draft (template fallback)
 
-def draft(category: str, fields: dict, profile: dict, enquiry: dict, tone: str = "friendly") -> str:
+def draft(category: str, fields: dict, profile: dict, enquiry: dict, tone: str = "friendly",
+          sources: list[dict] | None = None) -> str:
     first = fields.get("name", "there").split()[0] if fields.get("name") else "there"
     hi = f"Dear {fields.get('name') or 'Sir/Madam'}," if tone == "formal" else f"Hi {first},"
     text = f"{enquiry.get('subject', '')}\n{enquiry.get('body', '')}"
     sign = f"Regards,\n{profile['signature']}"
     services = [s for s in profile["services"] if s["name"] in fields.get("services", [])]
     faqs = match_faq(text, profile)
+    # RAG in rules mode: quote the most relevant sentence of the best document section, with its citation.
+    from .retriever import best_sentence
+    doc_lines = []
+    top = (sources or [{}])[0].get("score", 0)
+    for src in [x for x in (sources or [])[:2] if x["score"] >= 0.6 * top]:   # only sections close to the best one
+        sent = best_sentence(src, text)
+        if sent and sent not in " ".join(f["a"] for f in faqs):
+            doc_lines.append(f"{sent} [{src['id']}]")
 
     if category == "support":
         lines = [hi, "", f"Thanks for reaching out. We've logged your request and the team will get back to you within one "
                          f"working day ({profile['hours']}).", ""]
-        lines += [f["a"] for f in faqs] + ([""] if faqs else [])
+        # Support: the customer has a specific problem, so quote the documents only (the FAQ is for new customers).
+        lines += doc_lines[:1] + ([""] if doc_lines else [])
         return "\n".join(lines + [sign]).replace("\n\n\n", "\n\n")
     if category == "partnership":
         return "\n".join([hi, "", f"Thank you for your proposal. We've shared it with the person who handles purchasing "
@@ -206,11 +240,11 @@ def draft(category: str, fields: dict, profile: dict, enquiry: dict, tone: str =
         lines.append("The final quote depends on the details of your case.")
     else:
         lines.append("Could you share a little more about what you need, so we can point you to the right service?")
-    if faqs:
+    if faqs or doc_lines:
         lines.append("")
-        lines += [f["a"] for f in faqs]
+        lines += [f["a"] for f in faqs] + doc_lines
     if profile.get("guardrail"):
-        lines += ["", "The dentist will confirm the right treatment after examining you."]
+        lines += ["", "We'll confirm what's right for you after a proper consultation."]
     lines += ["", f"The easiest next step is {profile['next_step']}."]
     lines.append("What time works for you?" if fields.get("phone") else "Could you share a phone number and a good time to reach you?")
     lines += ["", sign]
@@ -228,18 +262,29 @@ def _nums(text: str) -> set[str]:
     return {n.replace(",", "").rstrip(".") for n in NUM.findall(text)}
 
 
-def check_reply(reply: str, profile: dict, enquiry: dict, kb: str, category: str) -> dict:
-    """The reply may only use numbers that appear in the business's knowledge base or in the customer's own
-    message (so no invented prices, discounts or dates), must not over-promise, and must not be empty or huge."""
+# An offer is only allowed if the same phrase is in the business's facts: "free demo class" is fine for the coaching
+# institute, but "ITR filing is free for you" isn't, even though the CA firm's facts contain "free 15-minute call".
+OFFER_PHRASES = re.compile(r"\d+\s*%\s*(?:off|discount)|discount\w*(?:\s+\w+)?|free\s+[\w-]+|waive\w*\s+\w+|cashback|complimentary\s+\w+")
+CITATION = re.compile(r"\[\d+\]")
+
+
+def check_reply(reply: str, profile: dict, enquiry: dict, kb: str, category: str, sources_text: str = "") -> dict:
+    """The reply may only use numbers that appear in the business's knowledge base, the retrieved documents or the
+    customer's own message (so no invented prices, discounts or dates), may only mention offers the business
+    actually has, must not over-promise, and must not be empty or huge."""
     issues = []
-    allowed = _nums(kb) | _nums(enquiry.get("body", "")) | _nums(enquiry.get("subject", ""))
-    new_nums = sorted(n for n in _nums(reply) - allowed if len(n) > 1)  # single digits ("1 working day") are fine
+    facts = kb + "\n" + sources_text
+    allowed = _nums(facts) | _nums(enquiry.get("body", "")) | _nums(enquiry.get("subject", ""))
+    new_nums = sorted(_nums(CITATION.sub("", reply)) - allowed)     # [1]-style citations aren't claims
     if new_nums:
         issues.append(f"uses numbers not in the knowledge base or the enquiry: {', '.join(new_nums)}")
     low = reply.lower()
     for b in BANNED:
         if b in low and b not in enquiry.get("body", "").lower():
             issues.append(f"over-promises ('{b}')")
+    for phrase in OFFER_PHRASES.findall(low):   # a customer asking for "90% off" doesn't make it our offer
+        if phrase not in facts.lower():
+            issues.append(f"offers something not in the knowledge base ('{phrase}')")
     if len(reply.strip()) < 40:
         issues.append("reply is too short")
     if len(reply) > 1600:

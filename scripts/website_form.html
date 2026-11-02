@@ -1,0 +1,21 @@
+<!-- LeadFlow enquiry form: paste into any website. Set BUSINESS_ID and INTAKE_KEY.
+     Note: anything in a public page is visible to visitors, so use a separate INTAKE_KEY that you can rotate. -->
+<form id="lf-form" style="max-width:420px;font-family:system-ui;display:grid;gap:8px">
+  <input name="from_name" placeholder="Your name" required>
+  <input name="from_email" type="email" placeholder="Email">
+  <input name="subject" placeholder="What do you need?">
+  <textarea name="body" rows="5" placeholder="Tell us a bit more (and a phone number if you'd like a call)" required minlength="10"></textarea>
+  <button>Send enquiry</button>
+  <p id="lf-msg"></p>
+</form>
+<script>
+const LEADFLOW = "https://leadflow-ai-two-sooty.vercel.app/api/intake", BUSINESS_ID = "ca", INTAKE_KEY = "your-INTAKE_KEY";
+document.getElementById("lf-form").onsubmit = async (ev) => {
+  ev.preventDefault();
+  const f = Object.fromEntries(new FormData(ev.target));
+  const r = await fetch(LEADFLOW, { method: "POST", headers: { "Content-Type": "application/json", "X-Intake-Key": INTAKE_KEY },
+    body: JSON.stringify({ business_id: BUSINESS_ID, enquiry: { channel: "web form", ...f } }) });
+  document.getElementById("lf-msg").textContent = r.ok ? "Thanks! We'll get back to you shortly." : "Sorry, something went wrong.";
+  if (r.ok) ev.target.reset();
+};
+</script>
