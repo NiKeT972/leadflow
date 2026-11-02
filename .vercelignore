@@ -1,4 +1,4 @@
-docs/
-tests/
-scripts/
-.github/
+/docs/
+/tests/
+/scripts/
+/.github/
