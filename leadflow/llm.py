@@ -42,3 +42,15 @@ def llm_failed(node: str, err: Exception) -> None:
 
 def model_name() -> str:
     return (os.getenv("GROQ_MODEL") or DEFAULT_MODEL) if llm_available() else "built-in rules"
+
+
+def tracing_enabled() -> bool:
+    """LangSmith tracing. LangChain and LangGraph send every node and LLM call to LangSmith on their own when
+    LANGSMITH_TRACING=true and LANGSMITH_API_KEY are set. Traces contain customer messages, so only turn this on
+    for demo data, or set LANGSMITH_HIDE_INPUTS=true / LANGSMITH_HIDE_OUTPUTS=true for real leads."""
+    return os.getenv("LANGSMITH_TRACING", "").lower() == "true" and bool(os.getenv("LANGSMITH_API_KEY"))
+
+
+def run_config(name: str, **metadata) -> dict:
+    """A readable run name plus tags and metadata, so traces can be filtered in LangSmith (e.g. by business)."""
+    return {"run_name": name, "tags": ["leadflow", name], "metadata": {"model": model_name(), **metadata}}

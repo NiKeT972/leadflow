@@ -34,7 +34,7 @@ from pydantic import BaseModel, Field
 
 from . import integrations as io
 from . import rules
-from .llm import get_llm, llm_failed
+from .llm import get_llm, llm_failed, run_config
 from .profiles import kb_text
 from .retriever import builtin_docs, retrieve as rag_search
 
@@ -408,7 +408,8 @@ def start(enquiry: dict, profile: dict, tone: str = "friendly", docs: list[dict]
     if docs is None:
         docs = builtin_docs(profile.get("id", ""))
     graph = build_graph()
-    cfg = {"configurable": {"thread_id": "lead", "docs": docs}}
+    cfg = {"configurable": {"thread_id": "lead", "docs": docs},
+           **run_config("start", business=profile.get("id", ""), channel=enquiry.get("channel", ""), tone=tone)}
     graph.invoke({"enquiry": enquiry, "profile": profile, "tone": tone, "trace": [], "actions": [], "needs_human": [],
                   "received_at": time.time()}, cfg)
     out = _finish(graph, cfg)
@@ -417,7 +418,9 @@ def start(enquiry: dict, profile: dict, tone: str = "friendly", docs: list[dict]
 
 
 def resume(state: dict, decision: str, feedback: str = "", edited_reply: str = "") -> dict:
-    graph, cfg = build_graph(), {"configurable": {"thread_id": "lead", "docs": []}}
+    graph = build_graph()
+    cfg = {"configurable": {"thread_id": "lead", "docs": []},
+           **run_config("resume", business=(state.get("profile") or {}).get("id", ""), decision=decision)}
     # Re-seed the paused state as if check_reply just ran; route_after_check sends it to human_review again.
     graph.update_state(cfg, {**state, "decision": decision, "feedback": feedback if decision == "revise" else "",
                              "edited_reply": edited_reply if decision == "approve" else ""}, as_node="check_reply")

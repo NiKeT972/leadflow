@@ -92,6 +92,8 @@ footer{color:var(--mute);font-size:12px;text-align:center;padding:4px 0 26px}foo
 .metrics{width:100%;border-collapse:collapse;font-size:13px}.metrics th,.metrics td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left}
 .metrics th{color:var(--mute);font-weight:600;font-size:12px}.metrics td.num{font-variant-numeric:tabular-nums;font-weight:600}
 .good{color:var(--ok)}.meh{color:var(--warm)}.badv{color:var(--bad)}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:22px auto 0;max-width:820px;text-align:left}@media(max-width:800px){.steps{grid-template-columns:1fr 1fr}}
+.steps div{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel2)}.steps b{display:block;font-size:13px;color:var(--ink)}.steps span{font-size:12px}
 .ok-msg{background:var(--okbg);color:var(--ok);padding:8px 12px;border-radius:8px;margin:8px 0;font-size:13px}
 </style>
 </head>
@@ -102,6 +104,7 @@ footer{color:var(--mute);font-size:12px;text-align:center;padding:4px 0 26px}foo
     <div class="tabs"><button class="tab on" data-view="inboxView">Inbox</button><button class="tab" data-view="settingsView">Settings</button><button class="tab" data-view="evalView">Evaluation</button></div>
     <select id="biz" title="Business"></select>
     <span id="mode" class="pill">checking…</span>
+    <span id="tracePill" class="pill llm" style="display:none" title="LANGSMITH_TRACING is on: every run is traced in LangSmith">LangSmith ●</span>
     <span id="int" class="hright"></span>
     <button class="iconbtn" id="themeBtn" title="Dark / light">🌙</button>
   </div>
@@ -120,7 +123,7 @@ footer{color:var(--mute);font-size:12px;text-align:center;padding:4px 0 26px}foo
   </section>
   <section>
     <div class="stats" id="stats"></div>
-    <div id="detail"><div class="card empty">Pick an enquiry from the inbox, or press <b>Process all</b> to triage the whole inbox.</div></div>
+    <div id="detail"><div class="card empty">Pick an enquiry from the inbox, or press <b>Process all</b> to triage the whole inbox.<div class="steps"><div><b>1 · Guard &amp; classify</b><span>Prompt-injection check, then sales / support / spam / job / partnership.</span></div><div><b>2 · Extract &amp; score</b><span>Services, budget, timeline and phone pulled out; lead scored with reasons.</span></div><div><b>3 · Draft with sources</b><span>RAG over the business's docs; the reply check blocks any price or offer not in them.</span></div><div><b>4 · You approve</b><span>Only then: log to Sheets, ping the team on Telegram, send the reply.</span></div></div></div></div>
   </section>
 </main>
 
@@ -305,7 +308,7 @@ function highlightCites(t){ return esc(t).replace(/\[(\d)\]/g, '<b style="color:
 
 function renderDetail(){
   const l = LEADS[SEL];
-  if (!l) { if (!isLive() || Object.keys(LEADS).length) $("detail").innerHTML = `<div class="card empty">Pick an enquiry from the inbox${isLive() ? "" : ", or press <b>Process all</b> to triage the whole inbox"}.</div>`; return }
+  if (!l) { if (!isLive() || Object.keys(LEADS).length) $("detail").innerHTML = `<div class="card empty">Pick an enquiry from the inbox${isLive() ? "" : ", or press <b>Process all</b> to triage the whole inbox"}.<div class="steps"><div><b>1 · Guard &amp; classify</b><span>Prompt-injection check, then sales / support / spam / job / partnership.</span></div><div><b>2 · Extract &amp; score</b><span>Services, budget, timeline and phone pulled out; lead scored with reasons.</span></div><div><b>3 · Draft with sources</b><span>RAG over the business's docs; the reply check blocks any price or offer not in them.</span></div><div><b>4 · You approve</b><span>Only then: log to Sheets, ping the team on Telegram, send the reply.</span></div></div></div>`; return }
   const e = l.enquiry, r = l.result, st = r?.state, busy = BUSY.has(l.id);
   const times = st ? [`AI processed in ${st.run_ms ?? "?"} ms`, st.approved_at && st.received_at ? `approved ${ago(st.approved_at - st.received_at)} after it arrived` : "",
                       st.received_at ? `received ${ago(Date.now() / 1000 - st.received_at)} ago` : ""].filter(Boolean) : [];
@@ -535,6 +538,7 @@ async function renderEval(){
     ${Object.keys(LABELS).map(k => `<tr><td>${LABELS[k]}</td>${cols.map(([c]) => { const v = reps[c].metrics[k]; return `<td class="num ${cls(k, v)}">${v ?? "—"}${v != null && !k.startsWith("avg") && !k.includes("alarms") ? "%" : ""}</td>` }).join("")}</tr>`).join("")}</table>
     ${reps.llm ? "" : `<div class="meta" style="margin-top:10px">LLM column: run <code>GROQ_API_KEY=… python scripts/eval.py</code> and commit <code>evals/report_llm.json</code> to fill it in.</div>`}
     ${cols.map(([c, t]) => reps[c].misses?.length ? `<h3>${t}: category misses</h3><div class="meta">${reps[c].misses.map(m => `${m.id}: expected ${m.expected}, got ${m.got}`).join(" · ")}</div>` : "").join("")}
+    ${reps.rules?.holdout ? (h => `<h3>Held-out check: ${h.cases} enquiries written after the fixes, never tuned on</h3><div class="meta">Category <b>${h.category_accuracy}%</b> · timeline <b>${h.timeline_accuracy}%</b> · phone <b>${h.phone_accuracy}%</b> · injection caught <b>${h.injection_caught}</b> · services exactly right <b>${h.services_exact}%</b>. ${h.misses.length ? "Misses: " + h.misses.map(m => `${m.id} ${m.field}: expected ${JSON.stringify(m.expected)}, got ${JSON.stringify(m.got)}`).map(esc).join(" · ") : ""}</div>`)(reps.rules.holdout) : ""}
     ${reps.rules?.service_misses?.length ? `<h3>Rules · now: service extraction differences</h3><div class="meta">${reps.rules.service_misses.map(m => `${m.id}: expected [${m.expected.join(", ")}], got [${m.got.join(", ")}]`).map(esc).join("<br>")}</div>` : ""}`;
 }
 
@@ -547,6 +551,7 @@ window.renderGraph = function(){ if (window._mermaid && window._graphSrc) { $("g
   window._graphSrc = META.graph; window.renderGraph();
   $("mode").className = "pill " + (HEALTH.llm ? "llm" : "");
   $("mode").textContent = HEALTH.llm ? "AI: " + HEALTH.model : "AI: built-in rules (no API key)";
+  if (HEALTH.tracing) $("tracePill").style.display = "";
   $("int").innerHTML = [["sheets", "Sheets"], ["telegram", "Telegram"], ["email", "Email"], ["whatsapp", "WhatsApp"]].map(([k, n]) => `<span class="pill ${HEALTH.integrations[k] ? "on" : ""}" title="${HEALTH.integrations[k] ? "connected" : "simulated – not connected"}">${n} ${HEALTH.integrations[k] ? "●" : "○"}</span>`).join("");
   $("storagePill").textContent = HEALTH.storage ? "Supabase connected" : "not connected"; $("storagePill").className = "chip " + (HEALTH.storage ? "c-done" : "c-new");
 })();

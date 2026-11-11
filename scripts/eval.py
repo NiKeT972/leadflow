@@ -6,6 +6,7 @@
 Writes evals/report_<mode>.json; the dashboard's Evaluation panel shows every report it finds.
 evals/cases.jsonl        50 enquiries (3 businesses, English + Hinglish, spam, support, injection attempts),
                           labelled by hand before the system was run on them
+evals/holdout.jsonl      12 enquiries written after the rule fixes and never tuned on (reported separately)
 evals/reply_cases.jsonl  16 draft replies labelled "should pass" / "should be blocked" for the reply check
 """
 from __future__ import annotations
@@ -41,7 +42,13 @@ def run(force_rules: bool = False) -> dict:
     from leadflow.profiles import get_profile, kb_text
     from leadflow.retriever import builtin_docs, retrieve
 
-    cases, rows = load("cases.jsonl"), []
+    rows = _run_cases(load("cases.jsonl"), graph, get_profile)
+    hold = _run_cases(load("holdout.jsonl"), graph, get_profile) if (ROOT / "evals" / "holdout.jsonl").exists() else []
+    return _report(rows, hold, rules, retrieve, builtin_docs, get_profile, kb_text, model_name())
+
+
+def _run_cases(cases, graph, get_profile) -> list[dict]:
+    rows = []
     for c in cases:
         e = {"channel": c["channel"], "from_name": "", "from_email": "", "subject": c["subject"], "body": c["body"]}
         t0 = time.perf_counter()
@@ -53,7 +60,10 @@ def run(force_rules: bool = False) -> dict:
                      "services": f.get("services", []), "budget": f.get("budget_inr"), "timeline": f.get("timeline"),
                      "phone": bool(f.get("phone")), "injection": bool((st.get("guard") or {}).get("injection")),
                      "check_ok": (st.get("check") or {}).get("ok"), "drafts": st.get("drafts", 0)})
+    return rows
 
+
+def _report(rows, hold, rules, retrieve, builtin_docs, get_profile, kb_text, mode) -> dict:
     n = len(rows)
     L = lambda r: r["label"]
     cat_ok = sum(r["category"] == L(r)["category"] for r in rows)
@@ -93,7 +103,7 @@ def run(force_rules: bool = False) -> dict:
     n_bad = sum(not r["expected"] for r in reply_rows)
 
     report = {
-        "mode": model_name(), "run_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"), "cases": n,
+        "mode": mode, "run_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"), "cases": n,
         "metrics": {
             "category_accuracy": pct(cat_ok, n),
             "spam_precision": pct(spam_tp, sum(r["archived"] for r in rows)),
@@ -115,8 +125,28 @@ def run(force_rules: bool = False) -> dict:
         "service_misses": [{"id": r["id"], "expected": L(r)["services"], "got": r["services"]} for r in live
                            if set(r["services"]) != set(L(r)["services"])],
         "reply_check_misses": [r for r in reply_rows if r["expected"] != r["got"]],
+        # 12 enquiries written after the fixes and never tuned on: the honest estimate of how the rules generalise.
+        "holdout": _holdout(hold) if hold else None,
     }
     return report
+
+
+def _holdout(rows) -> dict:
+    L = lambda r: r["label"]
+    live = [r for r in rows if not r["archived"]]
+    return {
+        "cases": len(rows),
+        "category_accuracy": pct(sum(r["category"] == L(r)["category"] for r in rows), len(rows)),
+        "services_exact": pct(sum(set(r["services"]) == set(L(r)["services"]) for r in live), len(live)),
+        "timeline_accuracy": pct(sum(r["timeline"] == L(r)["timeline"] for r in live), len(live)),
+        "phone_accuracy": pct(sum(r["phone"] == L(r)["phone"] for r in live), len(live)),
+        "injection_caught": f"{sum(r['injection'] for r in rows if L(r)['injection'])}/{sum(L(r)['injection'] for r in rows)}",
+        "misses": [{"id": r["id"], "field": f, "expected": L(r)[k], "got": r[g]}
+                   for r in rows for f, k, g in [("category", "category", "category"), ("timeline", "timeline", "timeline")]
+                   if r[g] != L(r)[k] and not (f == "timeline" and r["archived"])]
+                  + [{"id": r["id"], "field": "services", "expected": L(r)["services"], "got": r["services"]}
+                     for r in live if set(r["services"]) != set(L(r)["services"])],
+    }
 
 
 def main():
@@ -131,6 +161,12 @@ def main():
         print(f"  {k:30} {v}")
     if rep["misses"]:
         print("  category misses:", ", ".join(f"{m['id']} {m['expected']}→{m['got']}" for m in rep["misses"]))
+    h = rep.get("holdout")
+    if h:
+        print(f"  held-out ({h['cases']} enquiries, never tuned on): category {h['category_accuracy']}, services exact "
+              f"{h['services_exact']}, timeline {h['timeline_accuracy']}, phone {h['phone_accuracy']}, injection {h['injection_caught']}")
+        for m in h["misses"]:
+            print(f"  HELD-OUT MISS {m['id']} {m['field']}: expected {m['expected']}, got {m['got']}")
     print(f"wrote evals/report_{tag}.json")
 
 
