@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field, ValidationError
 from leadflow import graph, storage
 from leadflow import integrations as io_
 from leadflow.followup import draft_followup
-from leadflow.llm import llm_available, model_name
+from leadflow.llm import llm_available, model_name, tracing_enabled
 from leadflow.profiles import PROFILES, SAMPLES, kb_text, resolve_profile
 from leadflow.retriever import builtin_docs
 from leadflow.state_token import InvalidToken, seal, signing_configured, unseal
@@ -129,7 +129,7 @@ def _business(business_id: str) -> tuple[dict, Optional[list]]:
 def health():
     return {"ok": True, "llm": llm_available(), "model": model_name(), "state_signing": signing_configured(),
             "integrations": io_.status(), "storage": storage.enabled(),
-            "intake": bool(os.getenv("INTAKE_KEY")), "admin": bool(os.getenv("ADMIN_TOKEN"))}
+            "intake": bool(os.getenv("INTAKE_KEY")), "admin": bool(os.getenv("ADMIN_TOKEN")), "tracing": tracing_enabled()}
 
 
 @app.get("/api/meta")

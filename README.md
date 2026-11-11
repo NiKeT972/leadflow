@@ -66,6 +66,12 @@ The first run found three real gaps in the guardrail:
 
 The fixes are general rules; no test cases were special-cased. The rules and this test set were written by the same person, so treat the rules column as optimistic. Running the LLM column is the independent check (`evals/report_llm.json`).
 
+**Held-out check.** `evals/holdout.jsonl` has 12 more enquiries (Hinglish ITR and CET questions, a toothache, an articleship application, a school tie-up, an injection attempt hidden in a quote request…) written after the fixes and never tuned on. Rules mode gets the category, timeline and phone right on all 12 and catches the injection. Service extraction gets **72.7%** exactly right: it over-matches services from context words ("class 10 CBSE" in a NEET enquiry, "JEE" in a teacher's job application). That's the same weakness behind the 83% service precision above, and the clearest place where the LLM path should do better. It's shown in the Evaluation tab rather than patched.
+
+## Tracing with LangSmith
+
+Set `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` (optionally `LANGSMITH_PROJECT=leadflow`) to send every workflow run, node and LLM call to LangSmith. LangChain and LangGraph read these variables themselves. Runs are named `start` / `resume` and tagged with the business, channel, tone and your decision. Traces contain customer messages, so use demo data, or also set `LANGSMITH_HIDE_INPUTS=true` / `LANGSMITH_HIDE_OUTPUTS=true` for real leads. `/api/health` shows `tracing: true` when it's on, and the tests force it off.
+
 ## Design decisions (and why)
 
 - **LLM for language, rules for judgement.** The LLM classifies, extracts and writes. The injection guard, scoring and the reply check are deterministic and tested, so the model can't argue its way past them.

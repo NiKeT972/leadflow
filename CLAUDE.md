@@ -12,6 +12,8 @@ Live: https://leadflow-ai-two-sooty.vercel.app (Vercel project `leadflow-ai`). V
 - `leadflow/retriever.py` + `leadflow/docs/<id>/*.md`: BM25 RAG. Documents reach the `retrieve` node through `config["configurable"]["docs"]`, NOT the state (keeps the token small). Only the top `sources` go into state.
 - `leadflow/storage.py`: optional Supabase via PostgREST (`scripts/supabase_schema.sql`). `leadflow/followup.py`: follow-up drafts.
 - `evals/` + `scripts/eval.py`: 50 labelled enquiries + 16 reply-check cases → `evals/report_*.json` (shown in the Evaluation tab). `test_eval_rules_mode_does_not_regress` enforces the thresholds. Add a case for every bug you fix; never special-case an eval example.
+- `evals/holdout.jsonl`: 12 enquiries written after the fixes, reported separately in the eval report (`holdout`). Never tune rules on it.
+- **LangSmith:** opt-in via `LANGSMITH_TRACING=true` + `LANGSMITH_API_KEY`; run names/tags from `llm.run_config()`. Tests set `LANGSMITH_TRACING=false`.
 - `leadflow/integrations.py`: Sheets (Apps Script webhook), Telegram, Resend. Each returns `mode`: live / simulated / manual (manual = no email address, e.g. WhatsApp).
 - `leadflow/llm.py`, `leadflow/state_token.py`: same pattern as JobPilot.
 

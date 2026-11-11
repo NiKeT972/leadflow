@@ -1,6 +1,6 @@
 {
   "mode": "built-in rules",
-  "run_at": "2026-11-02 16:48 UTC",
+  "run_at": "2026-11-11 03:30 UTC",
   "cases": 50,
   "metrics": {
     "category_accuracy": 100.0,
@@ -17,7 +17,7 @@
     "sales_drafts_passing_check": 100.0,
     "reply_check_blocks_bad": 100.0,
     "reply_check_passes_good": 100.0,
-    "avg_ms_per_enquiry": 22
+    "avg_ms_per_enquiry": 17
   },
   "per_category": {
     "job_application": {
@@ -104,5 +104,43 @@
       ]
     }
   ],
-  "reply_check_misses": []
+  "reply_check_misses": [],
+  "holdout": {
+    "cases": 12,
+    "category_accuracy": 100.0,
+    "services_exact": 72.7,
+    "timeline_accuracy": 100.0,
+    "phone_accuracy": 100.0,
+    "injection_caught": "1/1",
+    "misses": [
+      {
+        "id": "h09",
+        "field": "services",
+        "expected": [
+          "NEET (2-year programme)"
+        ],
+        "got": [
+          "Class 10 board coaching (SSC/CBSE)",
+          "NEET (2-year programme)"
+        ]
+      },
+      {
+        "id": "h11",
+        "field": "services",
+        "expected": [],
+        "got": [
+          "JEE Main + Advanced (2-year programme)",
+          "Class 10 board coaching (SSC/CBSE)"
+        ]
+      },
+      {
+        "id": "h12",
+        "field": "services",
+        "expected": [],
+        "got": [
+          "JEE Main + Advanced (2-year programme)"
+        ]
+      }
+    ]
+  }
 }

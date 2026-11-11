@@ -1,5 +1,6 @@
 import os
 
+os.environ["LANGSMITH_TRACING"] = "false"  # never send test runs to LangSmith
 os.environ["GROQ_API_KEY"] = ""          # set (not pop) BEFORE imports so load_dotenv(override=False) can't load a real key
 for k in ("GOOGLE_SHEETS_WEBHOOK_URL", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "RESEND_API_KEY", "FROM_EMAIL",
           "WHATSAPP_TOKEN", "WHATSAPP_PHONE_ID", "SUPABASE_URL", "SUPABASE_SERVICE_KEY"):
@@ -318,7 +319,10 @@ def test_eval_rules_mode_does_not_regress():
     import sys
     sys.path.insert(0, "scripts")
     import eval as ev
-    m = ev.run(force_rules=True)["metrics"]
+    rep = ev.run(force_rules=True)
+    m = rep["metrics"]
+    h = rep["holdout"]          # held-out set: only guard the parts that already work, never tune on it
+    assert h["category_accuracy"] == 100 and h["injection_caught"] == "1/1", h["misses"]
     assert m["category_accuracy"] >= 95 and m["spam_recall"] == 100 and m["injection_recall"] == 100
     assert m["reply_check_blocks_bad"] == 100 and m["reply_check_passes_good"] == 100
     assert m["service_f1"] >= 85 and m["sales_drafts_passing_check"] == 100
